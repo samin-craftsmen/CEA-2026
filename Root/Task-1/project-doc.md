@@ -185,30 +185,18 @@ high operational overhead.
 
 ### 9.2 API Endpoints (Gin)
 
-  ----------------------------------------------------------------------------------------
-  Method         Endpoint                       Description              Roles
-  -------------- ------------------------------ ------------------------ -----------------
-  POST           /login                         Login                    All
+ | Method | Endpoint                     | Description                          | Roles            |
+|--------|------------------------------|--------------------------------------|------------------|
+| POST   | /login                       | Login                                | All              |
+| POST   | /logout                      | Logout                               | All              |
+| GET    | /meals/today                 | Get today's meal types               | All              |
+| GET    | /me/participation            | Get logged-in user's participation   | Employee+        |
+| PUT    | /me/participation            | Update own participation             | Employee+        |
+| GET    | /users                       | List users                           | Team Lead+       |
+| GET    | /users/:id/participation     | Get participation for a user         | Team Lead+       |
+| PUT    | /users/:id/participation     | Update participation for a user      | Team Lead+       |
+| GET    | /headcount/today             | Get totals per meal                  | Logistics/Admin  |
 
-  POST           /logout                        Logout                   All
-
-  GET            /meals/today                   Get today's meal types   All
-
-  GET            /me/participation              Get logged-in user's     Employee+
-                                                participation            
-
-  PUT            /me/participation              Update own participation Employee+
-
-  GET            /users                         List users               Team Lead+
-
-  GET            /users/:id/participation       Get participation for a  Team Lead+
-                                                user                     
-
-  PUT            /users/:id/participation       Update participation for Team Lead+
-                                                a user                   
-
-  GET            /headcount/today               Get totals per meal      Logistics/Admin
-  ----------------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
 
