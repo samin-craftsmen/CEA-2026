@@ -96,6 +96,7 @@ high operational overhead.
 #### FR1 --- Authentication
 
 -   Users can log in with username and password
+-   The system allows authorized roles(admin) to create new users
 -   JWT based authentication
 -   Each user has a role:
     -   Employee
@@ -185,10 +186,11 @@ high operational overhead.
 
 ### 9.2 API Endpoints (Gin)
 
- | Method | Endpoint                     | Description                          | Roles            |
+| Method | Endpoint                     | Description                          | Roles            |
 |--------|------------------------------|--------------------------------------|------------------|
 | POST   | /login                       | Login                                | All              |
 | POST   | /logout                      | Logout                               | All              |
+| POST   | /register                    | Register                             | Admin            |
 | GET    | /meals/today                 | Get today's meal types               | All              |
 | GET    | /me/participation            | Get logged-in user's participation   | Employee+        |
 | PUT    | /me/participation            | Update own participation             | Employee+        |
