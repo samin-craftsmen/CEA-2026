@@ -202,20 +202,12 @@ high operational overhead.
 
 ## 10. Key Decisions and Trade-offs
 
-  ------------------------------------------------------------------------
-  Decision                    Why           Trade-off
-  --------------------------- ------------- ------------------------------
-  Default opt-in              Matches       Must ensure opt-out is easy
-                              real-world    
-                              expectation   
+ | Decision           | Why                                   | Trade-off                                   |
+|--------------------|----------------------------------------|---------------------------------------------|
+| Default opt-in     | Matches real-world expectation         | Must ensure opt-out is easy                 |
+| JSON storage       | Fast to build, no DB setup required    | Limited scalability and concurrency control |
+| Single-day focus   | Simplifies the data model              | Historical reporting is deferred            |
 
-  JSON storage                Fast to       Limited scalability &
-                              build, no DB  concurrency control
-                              setup         
-
-  Single-day focus            Simplifies    Historical reporting deferred
-                              model         
-  ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
 
@@ -228,12 +220,12 @@ high operational overhead.
 
 ### Authorization 
 
-  Role        Permissions
-  ----------- ------------------------------------
-  Employee    View/update own participation
-  Team Lead   edit others
-  Admin       Full access including headcount
-  Logistics   View headcount only
+| Role       | Permissions                              |
+|------------|-------------------------------------------|
+| Employee   | View/update own participation             |
+| Team Lead  | Edit others                               |
+| Admin      | Full access including headcount           |
+| Logistics  | View headcount only                       |
 
 
 ------------------------------------------------------------------------
