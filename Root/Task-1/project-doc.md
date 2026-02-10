@@ -12,12 +12,12 @@
 ## 2. Summary
 
 Meal Headcount Planner (MHP) is a lightweight internal web application
-designed to replace the current Excel-based meal tracking process. It
+designed to replace the current Excel based meal tracking process. It
 enables employees to manage their daily meal participation while
-providing operations teams with real-time meal headcounts.
+providing operations teams with real time meal headcounts.
 
-Iteration 1 focuses on **daily participation tracking**, **role-based
-access**, and **basic headcount visibility** for logistics planning.
+Iteration 1 focuses on daily participation tracking, role-based
+access, and basic headcount visibility for logistics planning.
 
 ------------------------------------------------------------------------
 
@@ -25,10 +25,10 @@ access**, and **basic headcount visibility** for logistics planning.
 
 The current Excel-based system for tracking daily meal headcount:
 
--   Is manual and error-prone\
--   Lacks real-time visibility\
--   Makes it difficult to track last-minute changes\
--   Does not scale well beyond 100+ employees\
+-   Is manual and error-prone
+-   Lacks real-time visibility
+-   Makes it difficult to track last-minute changes
+-   Does not scale well beyond 100+ employees
 -   Requires manual aggregation for logistics planning
 
 This results in inaccurate meal counts, food wastage, or shortages, and
@@ -41,18 +41,18 @@ high operational overhead.
 ### Goals (Iteration 1)
 
 -   Provide a simple web interface for employees to manage daily meal
-    participation\
--   Default all employees as opted in unless they opt out\
--   Allow authorized roles to update entries on behalf of employees\
--   Provide real-time headcount per meal type for logistics/admin\
+    participation
+-   Default all employees as opted in unless they opt out
+-   Allow authorized roles to update entries on behalf of employees
+-   Provide real-time headcount per meal type for logistics/admin
 -   Replace daily Excel workflow with a centralized system
 
 ### Non-Goals (Iteration 1)
 
--   No advanced reporting \
--   No payroll or billing integrations\
--   No notifications\
--   No complex scheduling beyond "today"\
+-   No advanced reporting 
+-   No payroll or billing integrations
+-   No notifications
+-   No complex scheduling beyond "today"
 
 ------------------------------------------------------------------------
 
@@ -68,9 +68,9 @@ high operational overhead.
 
 ### Storage: File-based JSON (Iteration 1)
 
--   Low setup overhead\
--   Easy to inspect and debug\
--   Sufficient for \~100--300 users with daily records\
+-   Low setup overhead
+-   Easy to inspect and debug
+-   Sufficient for \~100+ users with daily records
 -   Designed to be replaceable by a relational DB later
 
 ------------------------------------------------------------------------
@@ -79,8 +79,8 @@ high operational overhead.
 
 ### New System
 
--   New backend service (Gin API)\
--   New React frontend\
+-   New backend service (Gin API)
+-   New React frontend
 -   JSON-based storage for users and daily participation
 
 ### Replaces
@@ -95,31 +95,32 @@ high operational overhead.
 
 #### FR1 --- Authentication
 
--   Users can log in with username and password\
+-   Users can log in with username and password
+-   JWT based authentication
 -   Each user has a role:
-    -   Employee\
-    -   Team Lead\
-    -   Admin\
+    -   Employee
+    -   Team Lead
+    -   Admin
     -   Logistics
 
 #### FR2 --- View Today's Meals
 
 -   Employees see a list of today's meal types:
-    -   Lunch\
-    -   Snacks\
-    -   Iftar\
-    -   Event Dinner\
-    -   Optional Dinner\
+    -   Lunch
+    -   Snacks
+    -   Iftar
+    -   Event Dinner
+    -   Optional Dinner
 -   Default status: Participating
 
 #### FR3 --- Employee Opt-Out
 
--   Employees can opt out of any meal for today\
+-   Employees can opt out of any meal for today
 -   Changes allowed until cutoff time 
 
 #### FR4 --- Role-Based Editing
 
--   Team Leads / Admin can update meal participation for any employee\
+-   Team Leads / Admin can update meal participation for any employee
 -   Logistics has read-only access to participation but can view totals
 
 #### FR5 --- Headcount View
@@ -131,8 +132,8 @@ high operational overhead.
 
 ### Non-Functional Requirements
 
--   JWT based security\
--   Support at least 100 concurrent users\
+-   JWT based security
+-   Support at least 100 concurrent users
 -   Basic auditability (who changed what)
 
 ------------------------------------------------------------------------
@@ -141,30 +142,30 @@ high operational overhead.
 
 ### 8.1 Employee Flow
 
-1.  User logs in\
-2.  Lands on "Today's Meals" page\
-3.  Sees list of meals with toggle (Participating / Opted Out)\
-4.  Changes status for one or more meals\
-5.  Clicks Save\
+1.  User logs in
+2.  Lands on "Today's Meals" page
+3.  Sees list of meals with toggle (Participating / Opted Out)
+4.  Changes status for one or more meals
+5.  Clicks Save
 6.  System confirms update
 
 ------------------------------------------------------------------------
 
 ### 8.2 Team Lead / Admin Flow (Edit on Behalf)
 
-1.  Logs in\
-2.  Navigates to Employee Participation page\
-3.  Searches/selects employee\
-4.  Views their meal participation for today\
-5.  Edits participation\
+1.  Logs in
+2.  Navigates to Employee Participation page
+3.  Searches/selects employee
+4.  Views their meal participation for today
+5.  Edits participation
 6.  Saves changes
 
 ------------------------------------------------------------------------
 
 ### 8.3 Logistics Flow (Headcount)
 
-1.  Logs in\
-2.  Navigates to Headcount Dashboard\
+1.  Logs in
+2.  Navigates to Headcount Dashboard
 3.  Sees totals per meal type for today
 
 ------------------------------------------------------------------------
@@ -234,7 +235,7 @@ high operational overhead.
 
 ### Authentication
 
--   Username/password login\
+-   Username/password login
 -   JWT based authentication
 
 ### Authorization 
@@ -253,15 +254,15 @@ high operational overhead.
 
 ### Unit Tests (Backend)
 
--   Participation logic (default opt-in)\
--   Headcount aggregation\
+-   Participation logic (default opt-in)
+-   Headcount aggregation
 -   Role permission checks
 
 ### Integration Tests
 
--   Login flow\
--   Employee updating meals\
--   Team Lead editing another user\
+-   Login flow
+-   Employee updating meals
+-   Team Lead editing another user
 -   Headcount totals correctness
 
 ------------------------------------------------------------------------
