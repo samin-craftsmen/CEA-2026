@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/yourname/gin-project/utils"
-
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/yourname/gin-project/utils"
 )
 
 func AuthMiddleware() gin.HandlerFunc {
@@ -27,6 +27,10 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
+		claims := token.Claims.(jwt.MapClaims)
+		c.Set("username", claims["username"])
+		c.Set("role", claims["role"])
 
 		c.Next()
 	}

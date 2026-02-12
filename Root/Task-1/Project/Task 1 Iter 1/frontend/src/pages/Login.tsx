@@ -17,7 +17,7 @@ export default function Login() {
   const data = await res.json();
 
   if (res.ok) {
-    localStorage.setItem("token", data.token); // store token
+    localStorage.setItem("token", data.token); 
     navigate("/meal-planner");
   } else {
     setMessage(data.error);

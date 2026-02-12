@@ -6,11 +6,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtKey = []byte("my_secret_key") // change in real apps
+var jwtKey = []byte("my_secret_key")
 
-func GenerateToken(username string) (string, error) {
+func GenerateToken(username string, role string) (string, error) {
 	claims := jwt.MapClaims{
 		"username": username,
+		"role":     role,
 		"exp":      time.Now().Add(time.Hour * 24).Unix(),
 	}
 
