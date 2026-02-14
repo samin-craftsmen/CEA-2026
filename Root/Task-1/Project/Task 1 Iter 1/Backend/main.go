@@ -63,7 +63,7 @@ func main() {
 			})
 		})
 
-		// ---------- Get Today's Meals (Employee View) ----------
+		// ---------- Get Today's Meals  ----------
 		authorized.GET("/meals/tomorrow", func(c *gin.Context) {
 			username := c.GetString("username")
 

@@ -1,39 +1,76 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import "./Login.css";
 
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async () => {
-  const res = await fetch("http://localhost:8080/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
-  });
+    if (!username || !password) {
+      setMessage("Please enter username and password");
+      return;
+    }
 
-  const data = await res.json();
+    setLoading(true);
+    setMessage("");
 
-  if (res.ok) {
-    localStorage.setItem("token", data.token); 
-    navigate("/meal-planner");
-  } else {
-    setMessage(data.error);
-  }
-};
+    try {
+      const res = await fetch("http://localhost:8080/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
 
+      const data = await res.json();
+
+      if (res.ok) {
+        localStorage.setItem("token", data.token);
+        navigate("/meal-planner");
+      } else {
+        setMessage(data.error || "Login failed");
+      }
+    } catch (err) {
+      setMessage("Server error. Please try again.");
+    }
+
+    setLoading(false);
+  };
 
   return (
-    <div style={{ padding: "2rem" }}>
-      <h2>Login</h2>
-      <input placeholder="Username" onChange={e => setUsername(e.target.value)} />
-      <br /><br />
-      <input type="password" placeholder="Password" onChange={e => setPassword(e.target.value)} />
-      <br /><br />
-      <button onClick={handleLogin}>Login</button>
-      <p>{message}</p>
+    <div className="login-page">
+      <div className="login-card">
+        <h2>Meal Headcount Planner</h2>
+        <p className="subtitle">Sign in to continue</p>
+
+        <input
+          className="input"
+          placeholder="Username"
+          value={username}
+          onChange={e => setUsername(e.target.value)}
+        />
+
+        <input
+          className="input"
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+        />
+
+        {message && <div className="error">{message}</div>}
+
+        <button
+          className="btn primary"
+          onClick={handleLogin}
+          disabled={loading}
+        >
+          {loading ? "Signing in..." : "Login"}
+        </button>
+      </div>
     </div>
   );
 }

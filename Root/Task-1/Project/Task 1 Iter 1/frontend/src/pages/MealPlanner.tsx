@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import "./MealPlanner.css";
 
 const allMeals = [
   "Lunch",
@@ -158,131 +159,132 @@ export default function MealPlanner() {
     navigate("/");
   };
 
-  return (
-    <div style={{ padding: "2rem" }}>
-      <h2>Meal Planner 🍽️</h2>
-
-      <p><strong>User:</strong> {username}</p>
-      <p><strong>Role:</strong> {role}</p>
+ return (
+  <div className="page">
+    <div className="card">
+      <div className="header">
+        <h2>🍽️ Meal Planner</h2>
+        <div>
+          <span className="badge">{username}</span>
+          <span className="badge role">{role}</span>
+        </div>
+      </div>
 
       {/* ================= MEAL SELECTION ================= */}
       {(role === "employee" || role === "teamlead" || role === "admin") && (
         <>
           <h3>Tomorrow's Meals</h3>
 
-          {allMeals.map(meal => (
-            <div key={meal} style={{ marginBottom: "10px" }}>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={selectedMeals.includes(meal)}
-                  onChange={() => toggleMeal(meal)}
-                />
-                {meal}
-              </label>
+          <div className="meal-grid">
+            {allMeals.map(meal => (
+              <div key={meal} className="meal-card">
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={selectedMeals.includes(meal)}
+                    onChange={() => toggleMeal(meal)}
+                  />
+                  {meal}
+                </label>
 
-              {/* Show items */}
-              {mealItems[meal] && mealItems[meal].length > 0 && (
-                <ul style={{ marginLeft: "20px" }}>
-                  {mealItems[meal].map((item: string, index: number) => (
-                    <li key={index}>{item}</li>
-                  ))}
-                </ul>
-              )}
+                {mealItems[meal]?.length > 0 && (
+                  <ul>
+                    {mealItems[meal].map((item: string, i: number) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                )}
 
-              {/* Admin item editor */}
-              {role === "admin" && (
-                <input
-                  placeholder="Add items (comma separated)"
-                  value={(itemInputs[meal] || []).join(", ")}
-                  onChange={e =>
-                    setItemInputs({
-                      ...itemInputs,
-                      [meal]: e.target.value
-                        .split(",")
-                        .map(s => s.trim()),
-                    })
-                  }
-                  style={{ marginLeft: "20px", width: "300px" }}
-                />
-              )}
-            </div>
-          ))}
+                {role === "admin" && (
+                  <input
+                    className="input"
+                    placeholder="Add items (comma separated)"
+                    value={(itemInputs[meal] || []).join(", ")}
+                    onChange={e =>
+                      setItemInputs({
+                        ...itemInputs,
+                        [meal]: e.target.value
+                          .split(",")
+                          .map(s => s.trim()),
+                      })
+                    }
+                  />
+                )}
+              </div>
+            ))}
+          </div>
 
-          <br />
-          <button onClick={saveOwnMeals}>Save</button>
+          <button className="btn primary" onClick={saveOwnMeals}>
+            Save Selection
+          </button>
 
           {role === "admin" && (
-            <>
-              <br /><br />
-              <button onClick={saveMealItems}>
-                Save Meal Items (Tomorrow)
-              </button>
-            </>
+            <button className="btn secondary" onClick={saveMealItems}>
+              Save Meal Items
+            </button>
           )}
         </>
       )}
 
       {/* ================= OVERRIDE ================= */}
       {(role === "teamlead" || role === "admin") && (
-        <>
-          <hr />
+        <div className="section">
           <h3>Modify Employee Meals</h3>
 
           <input
+            className="input"
             placeholder="Employee Username"
             value={searchUser}
             onChange={e => setSearchUser(e.target.value)}
           />
 
-          <br /><br />
-
           <input
+            className="input"
             type="date"
             value={searchDate}
             onChange={e => setSearchDate(e.target.value)}
           />
 
-          <br /><br />
-
-          <button onClick={overrideEmployee}>
+          <button className="btn warning" onClick={overrideEmployee}>
             Update Employee Meals
           </button>
-        </>
+        </div>
       )}
 
       {/* ================= HEADCOUNT ================= */}
       {role === "admin" && (
-        <>
-          <hr />
+        <div className="section">
           <h3>Headcount</h3>
 
           <input
+            className="input"
             type="date"
             value={searchDate}
             onChange={e => setSearchDate(e.target.value)}
           />
 
-          <br /><br />
-
-          <button onClick={fetchHeadcount}>
+          <button className="btn primary" onClick={fetchHeadcount}>
             Get Headcount
           </button>
 
           {headcount && (
-            <div style={{ marginTop: "1rem" }}>
+            <div className="headcount">
               {Object.entries(headcount).map(([meal, count]) => (
-                <p key={meal}>
-                  {meal}: {String(count)}
-                </p>
+                <div key={meal} className="headcount-item">
+                  <span>{meal}</span>
+                  <span>{String(count)}</span>
+                </div>
               ))}
             </div>
           )}
-        </>
+        </div>
       )}
 
-      <hr />
-      <button onClick={logout}>Logout</button>
+      <button className="btn danger logout" onClick={logout}>
+        Logout
+      </button>
     </div>
-  );
+  </div>
+);
+
 }
