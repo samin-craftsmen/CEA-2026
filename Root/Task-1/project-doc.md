@@ -3,7 +3,7 @@
 ## 1. Header
 
 **Project Name:** Meal Headcount Planner (MHP)\
-**Iteration:** 1 --- Daily Meal Opt-In/Out + Basic Visibility\
+**Iteration:** 2 - Team/Department Views + Special Day Controls\
 **Stack:** React (Frontend) + Go (Gin) Backend\
 **Target Users:** Employees, Team Leads, Admin, Logistics
 
@@ -11,245 +11,285 @@
 
 ## 2. Summary
 
-Meal Headcount Planner (MHP) is a lightweight internal web application
-designed to replace the current Excel based meal tracking process. It
-enables employees to manage their daily meal participation while
-providing operations teams with real time meal headcounts.
+Meal Headcount Planner (MHP) replaces the manual Excel-based process for
+tracking daily meal participation.
 
-Iteration 1 focuses on daily participation tracking, role-based
-access, and basic headcount visibility for logistics planning.
+Iteration 2 expands the system to support:
+
+-   Team-based visibility and access control
+-   Bulk updates and exception handling
+-   Special day controls (Office Closed / Holiday / Celebration)
+-   Work location tracking (Office / WFH)
+-   Company-wide WFH periods
+-   Improved headcount reporting
+-   Live dashboard updates (no page refresh)
+-   Auto-generated daily announcement draft
+
+The system evolves from simple daily tracking to an operational planning
+tool.
 
 ------------------------------------------------------------------------
 
 ## 3. Problem Statement
 
-The current Excel-based system for tracking daily meal headcount:
+While Iteration 1 solved daily participation tracking, operational gaps
+remain:
 
--   Is manual and error-prone
--   Lacks real-time visibility
--   Makes it difficult to track last-minute changes
--   Does not scale well beyond 100+ employees
--   Requires manual aggregation for logistics planning
+-   No team-level visibility
+-   No bulk handling for offsites or events
+-   No way to handle holidays or office closures
+-   No work-location distinction (Office vs WFH)
+-   No real-time UI updates
+-   No standardized daily announcement message
 
-This results in inaccurate meal counts, food wastage, or shortages, and
-high operational overhead.
+Iteration 2 addresses planning complexity across teams and special
+scenarios.
 
 ------------------------------------------------------------------------
 
 ## 4. Goals and Non-Goals
 
-### Goals (Iteration 1)
+### Goals (Iteration 2)
 
--   Provide a simple web interface for employees to manage daily meal
-    participation
--   Default all employees as opted in unless they opt out
--   Allow authorized roles to update entries on behalf of employees
--   Provide real-time headcount per meal type for logistics/admin
--   Replace daily Excel workflow with a centralized system
+-   Introduce team-based visibility and reporting
+-   Enable bulk participation changes within role scope
+-   Support special day types with system-level effects
+-   Track work location per date
+-   Support company-wide WFH periods
+-   Provide real-time headcount updates
+-   Generate formatted daily announcement text
+-   Extend reporting breakdowns
 
-### Non-Goals (Iteration 1)
-
--   No advanced reporting 
--   No payroll or billing integrations
--   No notifications
--   No complex scheduling beyond "today"
 
 ------------------------------------------------------------------------
 
-## 5. Tech Stack and Rationale
+## 5. Scope of Changes
 
-### Frontend: **React**
+### Backend Enhancements
 
--   As per training instruction
+-   Team association per user
+-   Day configuration entity
+-   Work-location tracking
+-   WFH date-range logic
+-   Bulk update logic
+-   Real-time update mechanism (WebSocket / SSE)
+-   Announcement generation endpoint
 
-### Backend: **Go (Gin)**
+### Frontend Enhancements
 
--   As per training instruction
-
-### Storage: File-based JSON (Iteration 1)
-
--   Low setup overhead
--   Easy to inspect and debug
--   Sufficient for \~100+ users with daily records
--   Designed to be replaceable by a relational DB later
-
-------------------------------------------------------------------------
-
-## 6. Scope of Changes
-
-### New System
-
--   New backend service (Gin API)
--   New React frontend
--   JSON-based storage for users and daily participation
-
-### Replaces
-
--   Excel sheets currently used for daily meal tracking
+-   Team view screens
+-   Special day configuration UI
+-   Work-location selector
+-   Live dashboard updates
+-   Announcement generator panel
 
 ------------------------------------------------------------------------
 
-## 7. Requirements
+## 6. Functional Requirements
 
-### Functional Requirements
+### Functional Requirements 1 - Team-Based Visibility
 
-#### FR1 --- Authentication
+-   Each employee belongs to a team
+-   Employees can view their team name
+-   Team Leads can view participation for their team only
+-   Admin/Logistics can view all teams
 
--   Users can log in with username and password
--   The system allows authorized roles(admin) to create new users
--   JWT based authentication
--   Each user has a role:
-    -   Employee
-    -   Team Lead
-    -   Admin
-    -   Logistics
+### Functional Requirements 2 - Bulk Participation Actions
 
-#### FR2 --- View Today's Meals
+Team Lead/Admin can:
 
--   Employees see a list of today's meal types:
-    -   Lunch
-    -   Snacks
-    -   Iftar
-    -   Event Dinner
-    -   Optional Dinner
--   Default status: Participating
+-   Apply bulk opt-out for a team or selected users
+-   Apply bulk change for a specific meal
+-   Mark group as opted-out due to event/offsite
 
-#### FR3 --- Employee Opt-Out
+Bulk changes must respect role scope.
 
--   Employees can opt out of any meal for today
--   Changes allowed until cutoff time 
+### Functional Requirements 3 - Special Day Controls
 
-#### FR4 --- Role-Based Editing
+Admin/Logistics can configure a date as:
 
--   Team Leads / Admin can update meal participation for any employee
--   Logistics has read-only access to participation but can view totals
+-   Office Closed
+-   Government Holiday
+-   Special Celebration Day (with note)
 
-#### FR5 --- Headcount View
+| Day Type             | Behavior                          |
+|----------------------|-----------------------------------|
+| Office Closed        | Meals disabled                    |
+| Government Holiday   | Meals disabled                    |
+| Special Celebration  | Meals enabled + note displayed    |
+| Normal               | Default behavior                  |
 
--   Logistics/Admin can view:
-    -   Total participating count per meal type for today
+
+### Functional Requirements 4 - Work Location Per Date
+
+-   Employees can select: Office / WFH for a date
+-   Team Leads/Admin can correct missing entries
+-   Location impacts reporting
+
+### Functional Requirements 5 - Company-Wide WFH Period
+
+-   Admin/Logistics can define a date range as "WFH for everyone"
+-   All users default to WFH during that range
+-   Reports treat users as WFH unless explicitly overridden
+
+### Functional Requirements 6 - Improved Headcount Reporting
+
+Headcount must be available by:
+
+-   Meal type
+-   Team
+-   Overall total
+-   Office vs WFH split
+
+### Functional Requirements 7 - Live Updates (No Refresh)
+
+When participation or work location changes:
+
+-   Dashboard updates instantly
+-   Bulk updates reflect immediately
+
+Implementation: WebSocket or Server-Sent Events (SSE)
+
+### Functional Requirements 8 - Daily Announcement Draft
+
+Admin/Logistics can:
+
+-   Select a date
+-   Generate formatted message including:
+    -   Meal-wise totals
+    -   Office/WFH split
+    -   Special day note
+
+Output must be copy/paste friendly.
 
 ------------------------------------------------------------------------
 
-### Non-Functional Requirements
+## 7. Data Model (JSON Structure --- Iteration 2)
 
--   JWT based security
--   Support at least 100 concurrent users
--   Basic auditability (who changed what)
+### users.json
+
+``` json
+{
+  "id": 1,
+  "username": "john",
+  "role": "employee",
+  "team": "Engineering"
+}
+```
+
+### participation.json
+
+``` json
+{
+  "date": "2026-02-14",
+  "user_id": 1,
+  "meals": {
+    "lunch": true,
+    "snacks": false
+  },
+  "work_location": "office"
+}
+```
+
+### day_config.json
+
+``` json
+{
+  "date": "2026-02-21",
+  "type": "office_closed",
+  "note": ""
+}
+```
+
+### wfh_periods.json
+
+``` json
+{
+  "start_date": "2026-02-10",
+  "end_date": "2026-02-15"
+}
+```
 
 ------------------------------------------------------------------------
+
 
 ## 8. User Flows
 
 ### 8.1 Employee Flow
 
-1.  User logs in
-2.  Lands on "Today's Meals" page
-3.  Sees list of meals with toggle (Participating / Opted Out)
-4.  Changes status for one or more meals
-5.  Clicks Save
-6.  System confirms update
+1.  Log in
+2.  View team name
+3.  Set work location
+4.  Update meal participation
+5.  Save
+6.  Dashboard updates live
+
+### 8.2 Team Lead Flow
+
+1.  Log in
+2.  View team participation
+3.  Apply bulk change (if needed)
+4.  Correct work-location entries
+5.  See real-time updated totals
+
+### 8.3 Admin/Logistics Flow
+
+1.  Log in
+2.  Configure special day (if needed)
+3.  Declare WFH period (if required)
+4.  View detailed report
+5.  Generate daily announcement
+6.  Monitor live headcount
 
 ------------------------------------------------------------------------
 
-### 8.2 Team Lead / Admin Flow (Edit on Behalf)
+## 9. Architecture
 
-1.  Logs in
-2.  Navigates to Employee Participation page
-3.  Searches/selects employee
-4.  Views their meal participation for today
-5.  Edits participation
-6.  Saves changes
-
-------------------------------------------------------------------------
-
-### 8.3 Logistics Flow (Headcount)
-
-1.  Logs in
-2.  Navigates to Headcount Dashboard
-3.  Sees totals per meal type for today
+    React Frontend
+       │
+       ├── REST API (Gin)
+       │       ├── Auth Middleware
+       │       ├── Role Guard
+       │       ├── Day Config Service
+       │       ├── Reporting Engine
+       │       └── Bulk Action Handler
+       │
+       ├── WebSocket/SSE Channel
+       │
+       └── JSON File Storage
 
 ------------------------------------------------------------------------
 
-## 9. Design
+## 10. Authorization Matrix
 
-### 9.1 High-Level Architecture
-
-    React Frontend  →  Gin REST API  →  JSON File Storage
-                          |
-                       Auth Middleware
-                          |
-                    Role-Based Access
-
-------------------------------------------------------------------------
-
-
-### 9.2 API Endpoints (Gin)
-
-| Method | Endpoint                     | Description                          | Roles            |
-|--------|------------------------------|--------------------------------------|------------------|
-| POST   | /login                       | Login                                | All              |
-| POST   | /logout                      | Logout                               | All              |
-| POST   | /register                    | Register                             | Admin            |
-| GET    | /meals/today                 | Get today's meal types               | All              |
-| GET    | /me/participation            | Get logged-in user's participation   | Employee+        |
-| PUT    | /me/participation            | Update own participation             | Employee+        |
-| GET    | /users                       | List users                           | Team Lead+       |
-| GET    | /users/:id/participation     | Get participation for a user         | Team Lead+       |
-| PUT    | /users/:id/participation     | Update participation for a user      | Team Lead+       |
-| GET    | /headcount/today             | Get totals per meal                  | Logistics/Admin  |
+| Role       | Own Meals | Edit Others | Bulk | View Team | View All | Special Day | WFH Period | Announcement |
+|------------|-----------|-------------|------|-----------|----------|------------|-----------|--------------|
+| Employee   | ✓         | ✗           | ✗    | ✗         | ✗        | ✗          | ✓         | ✗            |
+| Team Lead  | ✓         | ✓ (Team)    | ✓ (Team) | ✓     | ✗        | ✗          | ✓         | ✗            |
+| Admin      | ✓         | ✓           | ✓    | ✓         | ✓        | ✓          | ✓         | ✓            |
 
 
 ------------------------------------------------------------------------
 
-## 10. Key Decisions and Trade-offs
+## 11. Verification Approach (Definition of Done)
 
- | Decision           | Why                                   | Trade-off                                   |
-|--------------------|----------------------------------------|---------------------------------------------|
-| Default opt-in     | Matches real-world expectation         | Must ensure opt-out is easy                 |
-| JSON storage       | Fast to build, no DB setup required    | Limited scalability and concurrency control |
-| Single-day focus   | Simplifies the data model              | Historical reporting is deferred            |
+Iteration 2 is considered complete when:
 
-
-------------------------------------------------------------------------
-
-## 11. Security and Access Control
-
-### Authentication
-
--   Username/password login
--   JWT based authentication
-
-### Authorization 
-
-| Role       | Permissions                              |
-|------------|-------------------------------------------|
-| Employee   | View/update own participation             |
-| Team Lead  | Edit others                               |
-| Admin      | Full access including headcount           |
-| Logistics  | View headcount only                       |
-
+-   Team-based filtering works correctly
+-   Bulk updates respect role boundaries
+-   Special day types disable meals appropriately
+-   Work location is stored and reflected in reports
+-   WFH period overrides default behavior
+-   Reports correctly calculate:
+    -   Meal totals
+    -   Team totals
+    -   Office vs WFH split
+-   Dashboard updates instantly without reload
+-   Announcement output matches reporting totals
 
 ------------------------------------------------------------------------
 
-## 12. Testing Plan
-
-### Unit Tests (Backend)
-
--   Participation logic (default opt-in)
--   Headcount aggregation
--   Role permission checks
-
-### Integration Tests
-
--   Login flow
--   Employee updating meals
--   Team Lead editing another user
--   Headcount totals correctness
-
-------------------------------------------------------------------------
-
-## 13. Operations
+## 12. Operations
 
 ### Running Locally
 
@@ -265,7 +305,3 @@ go run main.go
 npm install
 npm run dev
 ```
-
-
-------------------------------------------------------------------------
-
