@@ -16,6 +16,7 @@ export default function MealPlanner() {
 
   const [role, setRole] = useState("");
   const [username, setUsername] = useState("");
+  const [team, setTeam] = useState("");
 
   const [selectedMeals, setSelectedMeals] = useState<string[]>([]);
   const [searchUser, setSearchUser] = useState("");
@@ -45,6 +46,7 @@ export default function MealPlanner() {
         if (!data) return;
         setRole(data.role.toLowerCase());
         setUsername(data.username);
+        setTeam(data.team);
       });
   }, []);
 
@@ -167,6 +169,7 @@ export default function MealPlanner() {
         <div>
           <span className="badge">{username}</span>
           <span className="badge role">{role}</span>
+          <span className="badge role">{team}</span>
         </div>
       </div>
 
