@@ -7,9 +7,9 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
-	"github.com/yourname/gin-project/middleware"
-	"github.com/yourname/gin-project/models"
-	"github.com/yourname/gin-project/utils"
+	"github.com/samin-craftsmen/gin-project/middleware"
+	"github.com/samin-craftsmen/gin-project/models"
+	"github.com/samin-craftsmen/gin-project/utils"
 )
 
 func main() {

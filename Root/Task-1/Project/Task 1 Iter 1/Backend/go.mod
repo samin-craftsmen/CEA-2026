@@ -1,4 +1,4 @@
-module github.com/yourname/gin-project
+module github.com/samin-craftsmen/gin-project
 
 go 1.25.6
 

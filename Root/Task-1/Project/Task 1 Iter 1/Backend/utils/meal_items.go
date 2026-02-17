@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/yourname/gin-project/models"
+	"github.com/samin-craftsmen/gin-project/models"
 )
 
 const mealItemsFile = "meal_items.json"
