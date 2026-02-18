@@ -272,14 +272,3 @@ func GetTodayMeals(c *gin.Context) {
 		},
 	})
 }
-func GetUser(c *gin.Context) {
-	username := c.GetString("username")
-	role := c.GetString("role")
-	team := c.GetString("team")
-
-	c.JSON(http.StatusOK, gin.H{
-		"username": username,
-		"role":     role,
-		"team":     team,
-	})
-}

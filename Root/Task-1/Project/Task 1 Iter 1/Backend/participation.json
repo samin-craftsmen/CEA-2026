@@ -82,12 +82,18 @@
   {
     "username": "admin1",
     "date": "2026-02-20",
-    "meals": null
+    "meals": [
+      "Lunch",
+      "Snacks"
+    ]
   },
   {
     "username": "teamLead101",
     "date": "2026-02-20",
-    "meals": null
+    "meals": [
+      "Lunch",
+      "Snacks"
+    ]
   },
   {
     "username": "employee101",
@@ -97,11 +103,17 @@
   {
     "username": "employee102",
     "date": "2026-02-20",
-    "meals": null
+    "meals": [
+      "Lunch",
+      "Snacks"
+    ]
   },
   {
     "username": "employee201",
     "date": "2026-02-20",
-    "meals": null
+    "meals": [
+      "Lunch",
+      "Snacks"
+    ]
   }
 ]

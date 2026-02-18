@@ -278,3 +278,232 @@ func TeamBulkOptIn(c *gin.Context) {
 		"updated_count": updatedCount,
 	})
 }
+
+func UpdateTeamMemberWorkLocation(c *gin.Context) {
+
+	// 🔐 Role check
+	role := c.GetString("role")
+	leadTeam := c.GetString("team")
+
+	if role != "teamLead" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Only team leads can modify team work locations",
+		})
+		return
+	}
+
+	var req struct {
+		Username string `json:"username"`
+		Date     string `json:"date"`
+		Location string `json:"location"`
+	}
+
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid input",
+		})
+		return
+	}
+
+	if req.Username == "" || req.Date == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "username and date are required",
+		})
+		return
+	}
+
+	if req.Location != "Office" && req.Location != "WFH" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid work location",
+		})
+		return
+	}
+
+	// 🔍 Verify user belongs to team lead's team
+	users, err := utils.LoadUsers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to load users",
+		})
+		return
+	}
+
+	validMember := false
+	for _, u := range users {
+		if u.Username == req.Username && u.Team == leadTeam {
+			validMember = true
+			break
+		}
+	}
+
+	if !validMember {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "You can only modify members of your own team",
+		})
+		return
+	}
+
+	// ------------------ Update Work Location ------------------
+
+	workData, err := utils.LoadWorkLocations()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to load work locations",
+		})
+		return
+	}
+
+	updated := false
+	for i, w := range workData {
+		if w.Username == req.Username && w.Date == req.Date {
+			workData[i].Location = req.Location
+			updated = true
+			break
+		}
+	}
+
+	if !updated {
+		workData = append(workData, models.WorkLocation{
+			Username: req.Username,
+			Date:     req.Date,
+			Location: req.Location,
+		})
+	}
+
+	err = utils.SaveWorkLocations(workData)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to save work location",
+		})
+		return
+	}
+
+	// ------------------ If WFH → Opt Out Meals ------------------
+
+	if req.Location == "WFH" {
+
+		participationData, err := utils.LoadParticipation()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to load participation",
+			})
+			return
+		}
+
+		newParticipation := []models.Participation{}
+		found := false
+
+		for _, p := range participationData {
+			if p.Username == req.Username && p.Date == req.Date {
+				newParticipation = append(newParticipation, models.Participation{
+					Username: req.Username,
+					Date:     req.Date,
+					Meals:    nil,
+				})
+				found = true
+			} else {
+				newParticipation = append(newParticipation, p)
+			}
+		}
+
+		if !found {
+			newParticipation = append(newParticipation, models.Participation{
+				Username: req.Username,
+				Date:     req.Date,
+				Meals:    nil,
+			})
+		}
+
+		err = utils.SaveParticipation(newParticipation)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to save participation",
+			})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Work location updated successfully",
+	})
+}
+
+func GetTeamMemberWorkLocation(c *gin.Context) {
+
+	// 🔐 Role check
+	role := c.GetString("role")
+	leadTeam := c.GetString("team")
+
+	if role != "teamLead" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Only team leads can access this",
+		})
+		return
+	}
+
+	var req struct {
+		Username string `json:"username"`
+		Date     string `json:"date"`
+	}
+
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid input",
+		})
+		return
+	}
+
+	if req.Username == "" || req.Date == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "username and date are required",
+		})
+		return
+	}
+
+	// 🔍 Verify team membership
+	users, err := utils.LoadUsers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to load users",
+		})
+		return
+	}
+
+	isMember := false
+	for _, u := range users {
+		if u.Username == req.Username && u.Team == leadTeam {
+			isMember = true
+			break
+		}
+	}
+
+	if !isMember {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "You can only view members of your own team",
+		})
+		return
+	}
+
+	// 🔎 Load work locations
+	workData, err := utils.LoadWorkLocations()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to load work locations",
+		})
+		return
+	}
+
+	for _, w := range workData {
+		if w.Username == req.Username && w.Date == req.Date {
+			c.JSON(http.StatusOK, w)
+			return
+		}
+	}
+
+	// Default if not set
+	c.JSON(http.StatusOK, gin.H{
+		"username": req.Username,
+		"date":     req.Date,
+		"location": "Office",
+	})
+}

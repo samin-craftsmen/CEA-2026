@@ -23,5 +23,4 @@ func RegisterMealRoutes(rg *gin.RouterGroup) {
 
 	rg.POST("/meals/update", handlers.UpdateMealSelection)
 
-	rg.GET("/me", handlers.GetUser)
 }

@@ -32,6 +32,7 @@ func main() {
 	routes.RegisterMealRoutes(authorized)
 	routes.RegisterAdminRoutes(authorized)
 	routes.RegisterTeamRoutes(authorized)
+	routes.RegisterMeRoutes(authorized)
 
 	r.Run(":8080")
 }
