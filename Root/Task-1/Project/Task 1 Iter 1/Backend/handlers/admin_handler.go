@@ -276,3 +276,111 @@ func GetTeamMealCountsByDate(c *gin.Context) {
 
 	c.JSON(http.StatusOK, result)
 }
+
+// -------------------- Admin: Set Special Day (Holiday, Celebration, etc.) --------------------
+func SetSpecialDay(c *gin.Context) {
+
+	role := c.GetString("role")
+	if role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not allowed"})
+		return
+	}
+
+	var req models.DayControl
+
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
+
+	// ------------------ Save Day Control ------------------
+
+	data, err := utils.LoadDayControls()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load day controls"})
+		return
+	}
+
+	updated := false
+	for i, d := range data {
+		if d.Date == req.Date {
+			data[i] = req
+			updated = true
+			break
+		}
+	}
+
+	if !updated {
+		data = append(data, req)
+	}
+
+	// ------------------ If OFFICE_CLOSED ------------------
+
+	if req.Type == "OFFICE_CLOSED" {
+
+		participationData, err := utils.LoadParticipation()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load participation"})
+			return
+		}
+
+		// Remove all participation entries for that date
+		newParticipation := []models.Participation{}
+
+		for _, p := range participationData {
+			if p.Date != req.Date {
+				newParticipation = append(newParticipation, p)
+			}
+		}
+
+		// Load all users
+		users, err := utils.LoadUsers()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load users"})
+			return
+		}
+
+		// Add forced opt-out (meals: null) for everyone
+		for _, user := range users {
+			newParticipation = append(newParticipation, models.Participation{
+				Username: user.Username,
+				Date:     req.Date,
+				Meals:    nil, // 🔥 means opted out of all meals
+			})
+		}
+
+		err = utils.SaveParticipation(newParticipation)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save participation"})
+			return
+		}
+	}
+
+	err = utils.SaveDayControls(data)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save day controls"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Day control set successfully"})
+}
+
+// -------------------- Admin: Get Special Day Status --------------------
+func GetDayStatus(c *gin.Context) {
+
+	date := c.Param("date")
+
+	data, _ := utils.LoadDayControls()
+
+	for _, d := range data {
+		if d.Date == date {
+			c.JSON(http.StatusOK, d)
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"date": date,
+		"type": "normal_day",
+	})
+}

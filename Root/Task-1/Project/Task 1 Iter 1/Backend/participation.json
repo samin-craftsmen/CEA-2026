@@ -82,46 +82,26 @@
   {
     "username": "admin1",
     "date": "2026-02-20",
-    "meals": [
-      "Iftar",
-      "Event Dinner",
-      "Optional Dinner"
-    ]
+    "meals": null
   },
   {
     "username": "teamLead101",
     "date": "2026-02-20",
-    "meals": [
-      "Iftar",
-      "Event Dinner",
-      "Optional Dinner"
-    ]
+    "meals": null
   },
   {
     "username": "employee101",
     "date": "2026-02-20",
-    "meals": [
-      "Iftar",
-      "Event Dinner",
-      "Optional Dinner"
-    ]
+    "meals": null
   },
   {
     "username": "employee102",
     "date": "2026-02-20",
-    "meals": [
-      "Iftar",
-      "Event Dinner",
-      "Optional Dinner"
-    ]
+    "meals": null
   },
   {
     "username": "employee201",
     "date": "2026-02-20",
-    "meals": [
-      "Iftar",
-      "Event Dinner",
-      "Optional Dinner"
-    ]
+    "meals": null
   }
 ]
