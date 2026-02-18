@@ -36,5 +36,92 @@
       "Event Dinner",
       "Optional Dinner"
     ]
+  },
+  {
+    "username": "teamLead101",
+    "date": "2026-02-18",
+    "meals": null
+  },
+  {
+    "username": "employee101",
+    "date": "2026-02-18",
+    "meals": null
+  },
+  {
+    "username": "employee102",
+    "date": "2026-02-18",
+    "meals": null
+  },
+  {
+    "username": "teamLead101",
+    "date": "2026-02-19",
+    "meals": [
+      "Iftar",
+      "Event Dinner",
+      "Optional Dinner"
+    ]
+  },
+  {
+    "username": "employee101",
+    "date": "2026-02-19",
+    "meals": [
+      "Iftar",
+      "Event Dinner",
+      "Optional Dinner"
+    ]
+  },
+  {
+    "username": "employee102",
+    "date": "2026-02-19",
+    "meals": [
+      "Iftar",
+      "Event Dinner",
+      "Optional Dinner"
+    ]
+  },
+  {
+    "username": "admin1",
+    "date": "2026-02-20",
+    "meals": [
+      "Iftar",
+      "Event Dinner",
+      "Optional Dinner"
+    ]
+  },
+  {
+    "username": "teamLead101",
+    "date": "2026-02-20",
+    "meals": [
+      "Iftar",
+      "Event Dinner",
+      "Optional Dinner"
+    ]
+  },
+  {
+    "username": "employee101",
+    "date": "2026-02-20",
+    "meals": [
+      "Iftar",
+      "Event Dinner",
+      "Optional Dinner"
+    ]
+  },
+  {
+    "username": "employee102",
+    "date": "2026-02-20",
+    "meals": [
+      "Iftar",
+      "Event Dinner",
+      "Optional Dinner"
+    ]
+  },
+  {
+    "username": "employee201",
+    "date": "2026-02-20",
+    "meals": [
+      "Iftar",
+      "Event Dinner",
+      "Optional Dinner"
+    ]
   }
 ]
