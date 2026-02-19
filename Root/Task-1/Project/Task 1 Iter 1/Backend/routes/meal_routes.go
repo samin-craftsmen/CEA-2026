@@ -26,4 +26,5 @@ func RegisterMealRoutes(rg *gin.RouterGroup) {
 
 	rg.POST("/meals/update", handlers.UpdateMealSelection)
 
+	rg.GET("/meals/headcount/live/:date", handlers.WebSocketHeadcount)
 }

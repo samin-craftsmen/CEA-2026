@@ -30,6 +30,31 @@ export default function MealPlanner() {
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toISOString().split("T")[0];
 
+  const [teamMeals, setTeamMeals] = useState<any[]>([]);
+  const [showTeamMeals, setShowTeamMeals] = useState(false);
+
+  const [allTeamsData, setAllTeamsData] = useState<any>(null);
+  const [adminDate, setAdminDate] = useState("");
+
+  // ================= FETCH ALL TEAMS PARTICIPATION (ADMIN ONLY) =================
+  const fetchAllTeamsParticipation = async () => {
+    if (!adminDate) {
+      alert("Select a date first");
+      return;
+    }
+
+    const res = await fetch(
+      `http://localhost:8080/admin/teams/meals/${adminDate}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    const data = await res.json();
+    setAllTeamsData(data);
+  };
+
+
   // ================= LOAD USER INFO =================
   useEffect(() => {
     fetch("http://localhost:8080/me", {
@@ -49,6 +74,20 @@ export default function MealPlanner() {
         setTeam(data.team);
       });
   }, []);
+
+  // ================= LOAD TEAM TODAY MEALS (TEAM LEAD) =================
+  useEffect(() => {
+    if (role !== "teamlead") return;
+
+    fetch("http://localhost:8080/teams/meals/today", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => res.json())
+      .then(data => {
+        setTeamMeals(data || []);
+      });
+  }, [role]);
+
 
   // ================= LOAD TOMORROW MEALS =================
   useEffect(() => {
@@ -161,133 +200,210 @@ export default function MealPlanner() {
     navigate("/");
   };
 
- return (
-  <div className="page">
-    <div className="card">
-      <div className="header">
-        <h2>🍽️ Meal Planner</h2>
-        <div>
-          <span className="badge">{username}</span>
-          <span className="badge role">{role}</span>
-          <span className="badge role">{team}</span>
-        </div>
-      </div>
-
-      {/* ================= MEAL SELECTION ================= */}
-      {(role === "employee" || role === "teamlead" || role === "admin") && (
-        <>
-          <h3>Tomorrow's Meals</h3>
-
-          <div className="meal-grid">
-            {allMeals.map(meal => (
-              <div key={meal} className="meal-card">
-                <label className="checkbox">
-                  <input
-                    type="checkbox"
-                    checked={selectedMeals.includes(meal)}
-                    onChange={() => toggleMeal(meal)}
-                  />
-                  {meal}
-                </label>
-
-                {mealItems[meal]?.length > 0 && (
-                  <ul>
-                    {mealItems[meal].map((item: string, i: number) => (
-                      <li key={i}>{item}</li>
-                    ))}
-                  </ul>
-                )}
-
-                {role === "admin" && (
-                  <input
-                    className="input"
-                    placeholder="Add items (comma separated)"
-                    value={(itemInputs[meal] || []).join(", ")}
-                    onChange={e =>
-                      setItemInputs({
-                        ...itemInputs,
-                        [meal]: e.target.value
-                          .split(",")
-                          .map(s => s.trim()),
-                      })
-                    }
-                  />
-                )}
-              </div>
-            ))}
+  return (
+    <div className="page">
+      <div className="card">
+        <div className="header">
+          <h2>🍽️ Meal Planner</h2>
+          <div>
+            <span className="badge">{username}</span>
+            <span className="badge role">{role}</span>
+            <span className="badge role">{team}</span>
           </div>
-
-          <button className="btn primary" onClick={saveOwnMeals}>
-            Save Selection
-          </button>
-
-          {role === "admin" && (
-            <button className="btn secondary" onClick={saveMealItems}>
-              Save Meal Items
-            </button>
-          )}
-        </>
-      )}
-
-      {/* ================= OVERRIDE ================= */}
-      {(role === "teamlead" || role === "admin") && (
-        <div className="section">
-          <h3>Modify Employee Meals</h3>
-
-          <input
-            className="input"
-            placeholder="Employee Username"
-            value={searchUser}
-            onChange={e => setSearchUser(e.target.value)}
-          />
-
-          <input
-            className="input"
-            type="date"
-            value={searchDate}
-            onChange={e => setSearchDate(e.target.value)}
-          />
-
-          <button className="btn warning" onClick={overrideEmployee}>
-            Update Employee Meals
-          </button>
         </div>
-      )}
 
-      {/* ================= HEADCOUNT ================= */}
-      {role === "admin" && (
-        <div className="section">
-          <h3>Headcount</h3>
+        {/* ================= MEAL SELECTION ================= */}
+        {(role === "employee" || role === "teamlead" || role === "admin") && (
+          <>
+            <h3>Tomorrow's Meals</h3>
 
-          <input
-            className="input"
-            type="date"
-            value={searchDate}
-            onChange={e => setSearchDate(e.target.value)}
-          />
+            <div className="meal-grid">
+              {allMeals.map(meal => (
+                <div key={meal} className="meal-card">
+                  <label className="checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedMeals.includes(meal)}
+                      onChange={() => toggleMeal(meal)}
+                    />
+                    {meal}
+                  </label>
 
-          <button className="btn primary" onClick={fetchHeadcount}>
-            Get Headcount
-          </button>
+                  {mealItems[meal]?.length > 0 && (
+                    <ul>
+                      {mealItems[meal].map((item: string, i: number) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  )}
 
-          {headcount && (
-            <div className="headcount">
-              {Object.entries(headcount).map(([meal, count]) => (
-                <div key={meal} className="headcount-item">
-                  <span>{meal}</span>
-                  <span>{String(count)}</span>
+                  {role === "admin" && (
+                    <input
+                      className="input"
+                      placeholder="Add items (comma separated)"
+                      value={(itemInputs[meal] || []).join(", ")}
+                      onChange={e =>
+                        setItemInputs({
+                          ...itemInputs,
+                          [meal]: e.target.value
+                            .split(",")
+                            .map(s => s.trim()),
+                        })
+                      }
+                    />
+                  )}
                 </div>
               ))}
             </div>
-          )}
-        </div>
-      )}
 
-      <button className="btn danger logout" onClick={logout}>
-        Logout
-      </button>
+            <button className="btn primary" onClick={saveOwnMeals}>
+              Save Selection
+            </button>
+
+            {role === "admin" && (
+              <button className="btn secondary" onClick={saveMealItems}>
+                Save Meal Items
+              </button>
+            )}
+          </>
+        )}
+
+        {/* ================= ALL TEAMS PARTICIPATION (ADMIN ONLY) ================= */}
+        {role === "admin" && (
+          <div className="section">
+            <h3>All Teams Participation</h3>
+
+            <input
+              className="input"
+              type="date"
+              value={adminDate}
+              onChange={e => setAdminDate(e.target.value)}
+            />
+
+            <button
+              className="btn primary"
+              onClick={fetchAllTeamsParticipation}
+            >
+              Load Participation
+            </button>
+
+            {allTeamsData &&
+              Object.entries(allTeamsData).map(([teamName, members]: any) => (
+                <div key={teamName} className="team-card">
+                  <div className="team-header">
+                    <strong>{teamName}</strong>
+                  </div>
+
+                  {members.map((member: any, index: number) => (
+                    <div key={index} style={{ marginBottom: "8px" }}>
+                      <strong>{member.username}:</strong>{" "}
+                      {member.meals?.join(", ") || "No meals"}
+                    </div>
+                  ))}
+                </div>
+              ))}
+          </div>
+        )}
+
+
+        {/* ================= TEAM TODAY MEALS (TEAM LEAD ONLY) ================= */}
+        {role === "teamlead" && (
+          <div className="section">
+            <button
+              className="btn secondary"
+              onClick={() => setShowTeamMeals(!showTeamMeals)}
+            >
+              {showTeamMeals ? "Hide Team Meal Status" : "View Team Meal Status"}
+            </button>
+
+            {showTeamMeals && (
+              <>
+                <h3 style={{ marginTop: "20px" }}>Today's Team Meal Status</h3>
+
+                {teamMeals.length === 0 && <p>No data found</p>}
+
+                {teamMeals.map((entry, index) => (
+                  <div key={index} className="team-card">
+                    <div className="team-header">
+                      <strong>{entry.username}</strong>
+                    </div>
+
+                    <div className="team-meals">
+                      {entry.meals?.length > 0 ? (
+                        <p>{entry.meals.join(", ")}</p>
+                      ) : (
+                        <p>No meals selected</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+              </>
+            )}
+          </div>
+        )}
+
+
+
+        {/* ================= OVERRIDE ================= */}
+        {(role === "teamlead" || role === "admin") && (
+          <div className="section">
+            <h3>Modify Employee Meals</h3>
+
+            <input
+              className="input"
+              placeholder="Employee Username"
+              value={searchUser}
+              onChange={e => setSearchUser(e.target.value)}
+            />
+
+            <input
+              className="input"
+              type="date"
+              value={searchDate}
+              onChange={e => setSearchDate(e.target.value)}
+            />
+
+            <button className="btn warning" onClick={overrideEmployee}>
+              Update Employee Meals
+            </button>
+          </div>
+        )}
+
+        {/* ================= HEADCOUNT ================= */}
+        {role === "admin" && (
+          <div className="section">
+            <h3>Headcount</h3>
+
+            <input
+              className="input"
+              type="date"
+              value={searchDate}
+              onChange={e => setSearchDate(e.target.value)}
+            />
+
+            <button className="btn primary" onClick={fetchHeadcount}>
+              Get Headcount
+            </button>
+
+            {headcount && (
+              <div className="headcount">
+                {Object.entries(headcount).map(([meal, count]) => (
+                  <div key={meal} className="headcount-item">
+                    <span>{meal}</span>
+                    <span>{String(count)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <button className="btn danger logout" onClick={logout}>
+          Logout
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
 
 }

@@ -254,52 +254,80 @@ func OverrideMealSelection(c *gin.Context) {
 }
 
 // ---------- Employee Update (Cutoff Applied) ----------
+// ---------- Employee Update (Cutoff Applied) ----------
 func UpdateMealSelection(c *gin.Context) {
-	if !utils.IsBeforeCutoff() {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Cutoff time passed for tomorrow"})
-		return
-	}
+	//username := c.GetString("username")
 
-	username := c.GetString("username")
-	role := c.GetString("role")
-
-	if role != "employee" && role != "teamlead" && role != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Not allowed"})
-		return
-	}
-
-	tomorrow := time.Now().AddDate(0, 0, 1).Format("2006-01-02")
-
-	var request struct {
+	var req struct {
+		Date  string            `json:"date"`
 		Meals []models.MealType `json:"meals"`
 	}
 
-	if err := c.BindJSON(&request); err != nil {
+	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
-	data, _ := utils.LoadParticipation()
+	// ...existing code to update participation...
 
-	updated := false
-	for i, entry := range data {
-		if entry.Username == username && entry.Date == tomorrow {
-			data[i].Meals = request.Meals
-			updated = true
-			break
+	// ✅ Broadcast update to all connected admin clients
+	participation, _ := utils.LoadParticipation()
+	workLocations, _ := utils.LoadWorkLocations()
+	users, _ := utils.LoadUsers()
+
+	totalParticipants := 0
+	officeCount := 0
+	wfhCount := 0
+	optedOut := 0
+
+	mealCount := map[string]int{
+		"Lunch":           0,
+		"Snacks":          0,
+		"Iftar":           0,
+		"Event Dinner":    0,
+		"Optional Dinner": 0,
+	}
+
+	for _, user := range users {
+		location := "Office"
+		for _, wl := range workLocations {
+			if wl.Username == user.Username && wl.Date == req.Date {
+				location = wl.Location
+				break
+			}
+		}
+
+		for _, p := range participation {
+			if p.Username == user.Username && p.Date == req.Date {
+				if p.Meals == nil {
+					optedOut++
+				} else {
+					totalParticipants++
+					if location == "WFH" {
+						wfhCount++
+					} else {
+						officeCount++
+					}
+					for _, meal := range p.Meals {
+						mealCount[string(meal)]++
+					}
+				}
+				break
+			}
 		}
 	}
 
-	if !updated {
-		data = append(data, models.Participation{
-			Username: username,
-			Date:     tomorrow,
-			Meals:    request.Meals,
-		})
+	headcount := gin.H{
+		"total_participants": totalParticipants,
+		"office":             officeCount,
+		"wfh":                wfhCount,
+		"opted_out":          optedOut,
+		"by_meal":            mealCount,
 	}
 
-	utils.SaveParticipation(data)
-	c.JSON(http.StatusOK, gin.H{"message": "Updated for tomorrow"})
+	BroadcastHeadcountUpdate(req.Date, headcount)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Meal selection updated"})
 }
 
 // ---------- Get Tommorow's Meals  ----------
