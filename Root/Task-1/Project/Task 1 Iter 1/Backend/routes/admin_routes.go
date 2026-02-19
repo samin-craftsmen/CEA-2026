@@ -13,6 +13,7 @@ func RegisterAdminRoutes(rg *gin.RouterGroup) {
 	rg.GET("/admin/teams/meals/:date", handlers.GetTeamMealCountsByDate)
 
 	rg.POST("admin/day-controls", handlers.SetSpecialDay)
+
 	rg.GET("admin/day-controls/:date", handlers.GetDayStatus)
 
 	rg.POST("/admin/work-location/update", handlers.UpdateWorkLocationByAdmin)

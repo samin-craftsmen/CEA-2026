@@ -15,6 +15,9 @@ func RegisterMealRoutes(rg *gin.RouterGroup) {
 
 	rg.GET("/meals/headcount/:date", handlers.Headcount)
 
+	// Daily announcement draft (admin)
+	rg.GET("/meals/announcement/:date", handlers.DailyAnnouncement)
+
 	rg.POST("/meals/items/update", handlers.UpdateMeals)
 
 	rg.GET("/meals/items/:date", handlers.GetMealItemsByDate)
