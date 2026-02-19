@@ -755,3 +755,161 @@ func SetCompanyWFH(c *gin.Context) {
 		"days_affected": daysAffected,
 	})
 }
+
+// ---------- Headcount By Team ----------
+func HeadcountByTeam(c *gin.Context) {
+	role := c.GetString("role")
+	if role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not allowed"})
+		return
+	}
+
+	date := c.Param("date")
+	participation, _ := utils.LoadParticipation()
+	users, _ := utils.LoadUsers()
+
+	teamMeals := map[string]map[string]int{}
+
+	for _, user := range users {
+		if _, exists := teamMeals[user.Team]; !exists {
+			teamMeals[user.Team] = map[string]int{
+				"Lunch":           0,
+				"Snacks":          0,
+				"Iftar":           0,
+				"Event Dinner":    0,
+				"Optional Dinner": 0,
+			}
+		}
+
+		for _, p := range participation {
+			if p.Username == user.Username && p.Date == date && p.Meals != nil {
+				for _, meal := range p.Meals {
+					teamMeals[user.Team][string(meal)]++
+				}
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, teamMeals)
+}
+
+// ---------- Headcount By Location (Office vs WFH) ----------
+func HeadcountByLocation(c *gin.Context) {
+	role := c.GetString("role")
+	if role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not allowed"})
+		return
+	}
+
+	date := c.Param("date")
+	participation, _ := utils.LoadParticipation()
+	workLocations, _ := utils.LoadWorkLocations()
+	users, _ := utils.LoadUsers()
+
+	locationMeals := map[string]map[string]int{
+		"Lunch":           {"Office": 0, "WFH": 0},
+		"Snacks":          {"Office": 0, "WFH": 0},
+		"Iftar":           {"Office": 0, "WFH": 0},
+		"Event Dinner":    {"Office": 0, "WFH": 0},
+		"Optional Dinner": {"Office": 0, "WFH": 0},
+	}
+
+	for _, user := range users {
+		// Get user's work location (default: Office)
+		location := "Office"
+		for _, wl := range workLocations {
+			if wl.Username == user.Username && wl.Date == date {
+				location = wl.Location
+				break
+			}
+		}
+
+		// Count meals by location
+		for _, p := range participation {
+			if p.Username == user.Username && p.Date == date && p.Meals != nil {
+				for _, meal := range p.Meals {
+					locationMeals[string(meal)][location]++
+				}
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, locationMeals)
+}
+
+// ---------- Overall Headcount Summary ----------
+func HeadcountSummary(c *gin.Context) {
+	role := c.GetString("role")
+	if role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not allowed"})
+		return
+	}
+
+	date := c.Param("date")
+	participation, _ := utils.LoadParticipation()
+	workLocations, _ := utils.LoadWorkLocations()
+	users, _ := utils.LoadUsers()
+
+	totalParticipants := 0
+	officeCount := 0
+	wfhCount := 0
+	optedOut := 0
+
+	mealCount := map[string]int{
+		"Lunch":           0,
+		"Snacks":          0,
+		"Iftar":           0,
+		"Event Dinner":    0,
+		"Optional Dinner": 0,
+	}
+
+	for _, user := range users {
+		// Get work location
+		location := "Office"
+		for _, wl := range workLocations {
+			if wl.Username == user.Username && wl.Date == date {
+				location = wl.Location
+				break
+			}
+		}
+
+		// Find participation for this user on this date
+		hasParticipation := false
+		for _, p := range participation {
+			if p.Username == user.Username && p.Date == date {
+				hasParticipation = true
+				if p.Meals == nil {
+					optedOut++
+				} else {
+					totalParticipants++
+					if location == "WFH" {
+						wfhCount++
+					} else {
+						officeCount++
+					}
+					for _, meal := range p.Meals {
+						mealCount[string(meal)]++
+					}
+				}
+				break
+			}
+		}
+
+		if !hasParticipation {
+			// No participation record = default Office, opted in
+			totalParticipants++
+			officeCount++
+			for meal := range mealCount {
+				mealCount[meal]++
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"total_participants": totalParticipants,
+		"office":             officeCount,
+		"wfh":                wfhCount,
+		"opted_out":          optedOut,
+		"by_meal":            mealCount,
+	})
+}

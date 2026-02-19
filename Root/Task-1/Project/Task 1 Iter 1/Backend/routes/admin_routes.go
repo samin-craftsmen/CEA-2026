@@ -21,4 +21,8 @@ func RegisterAdminRoutes(rg *gin.RouterGroup) {
 
 	// Admin: set company-wide WFH date range
 	rg.POST("/admin/company-wfh", handlers.SetCompanyWFH)
+
+	rg.GET("/admin/headcount/teams/:date", handlers.HeadcountByTeam)
+	rg.GET("/admin/headcount/summary/:date", handlers.HeadcountSummary)
+	rg.GET("/admin/headcount/location/:date", handlers.HeadcountByLocation)
 }
