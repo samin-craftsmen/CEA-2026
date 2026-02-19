@@ -18,4 +18,7 @@ func RegisterAdminRoutes(rg *gin.RouterGroup) {
 
 	rg.POST("/admin/work-location/update", handlers.UpdateWorkLocationByAdmin)
 	rg.GET("/admin/work-location", handlers.GetWorkLocationByAdmin)
+
+	// Admin: set company-wide WFH date range
+	rg.POST("/admin/company-wfh", handlers.SetCompanyWFH)
 }

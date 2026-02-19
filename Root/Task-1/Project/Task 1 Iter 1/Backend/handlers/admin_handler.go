@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samin-craftsmen/gin-project/models"
@@ -609,5 +610,148 @@ func GetWorkLocationByAdmin(c *gin.Context) {
 		"username": req.Username,
 		"date":     req.Date,
 		"location": "Office",
+	})
+}
+
+// -------------------- Admin: Set Company-wide WFH Range --------------------
+func SetCompanyWFH(c *gin.Context) {
+	role := c.GetString("role")
+	if role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not allowed"})
+		return
+	}
+
+	var req struct {
+		StartDate string  `json:"start_date"`
+		EndDate   string  `json:"end_date"`
+		Note      *string `json:"note,omitempty"`
+	}
+
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
+
+	if req.StartDate == "" || req.EndDate == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "start_date and end_date required"})
+		return
+	}
+
+	start, err1 := time.Parse("2006-01-02", req.StartDate)
+	end, err2 := time.Parse("2006-01-02", req.EndDate)
+	if err1 != nil || err2 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format, use YYYY-MM-DD"})
+		return
+	}
+
+	if start.After(end) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "start_date must be <= end_date"})
+		return
+	}
+
+	users, err := utils.LoadUsers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load users"})
+		return
+	}
+
+	participationData, err := utils.LoadParticipation()
+	if err != nil {
+		// initialize empty if file missing
+		participationData = []models.Participation{}
+	}
+
+	workData, err := utils.LoadWorkLocations()
+	if err != nil {
+		workData = []models.WorkLocation{}
+	}
+
+	dayControls, err := utils.LoadDayControls()
+	if err != nil {
+		dayControls = []models.DayControl{}
+	}
+
+	// Iterate dates in range
+	daysAffected := 0
+	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
+		dateStr := d.Format("2006-01-02")
+
+		// Participation: opt everyone out (meals: nil)
+		for _, user := range users {
+			found := false
+			for i, p := range participationData {
+				if p.Username == user.Username && p.Date == dateStr {
+					participationData[i].Meals = nil
+					found = true
+					break
+				}
+			}
+			if !found {
+				participationData = append(participationData, models.Participation{
+					Username: user.Username,
+					Date:     dateStr,
+					Meals:    nil,
+				})
+			}
+		}
+
+		// Work locations: set everyone to WFH
+		for _, user := range users {
+			updated := false
+			for i, w := range workData {
+				if w.Username == user.Username && w.Date == dateStr {
+					workData[i].Location = "WFH"
+					updated = true
+					break
+				}
+			}
+			if !updated {
+				workData = append(workData, models.WorkLocation{
+					Username: user.Username,
+					Date:     dateStr,
+					Location: "WFH",
+				})
+			}
+		}
+
+		// Day controls: add/update entry for this date
+		updatedDC := false
+		for i, dc := range dayControls {
+			if dc.Date == dateStr {
+				dayControls[i].Type = "COMPANY_WFH"
+				dayControls[i].Note = req.Note
+				updatedDC = true
+				break
+			}
+		}
+		if !updatedDC {
+			dayControls = append(dayControls, models.DayControl{
+				Date: dateStr,
+				Type: "COMPANY_WFH",
+				Note: req.Note,
+			})
+		}
+
+		daysAffected++
+	}
+
+	if err := utils.SaveParticipation(participationData); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save participation"})
+		return
+	}
+
+	if err := utils.SaveWorkLocations(workData); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save work locations"})
+		return
+	}
+
+	if err := utils.SaveDayControls(dayControls); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save day controls"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "Company WFH range applied",
+		"days_affected": daysAffected,
 	})
 }
