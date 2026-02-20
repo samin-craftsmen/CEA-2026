@@ -1,271 +1,358 @@
-# Meal Headcount Planner (MHP) -- Technical Design Document
+# Meal Headcount Planner (MHP) — Technical Design Document
 
 ## 1. Header
 
-**Project Name:** Meal Headcount Planner (MHP)\
-**Iteration:** 1 --- Daily Meal Opt-In/Out + Basic Visibility\
-**Stack:** React (Frontend) + Go (Gin) Backend\
-**Target Users:** Employees, Team Leads, Admin, Logistics
+**Project Name:** Meal Headcount Planner (MHP)  
+**Current Iteration:** 3 — Scheduling + Events + Operational Readiness  
+**Previous Iterations Covered:**  
+- Iteration 1 — Daily Meal Opt-In/Out + Basic Visibility  
+- Iteration 2 — Team Views + Special Days + Live Updates  
+**Stack:** React (Frontend) + Go (Gin) Backend  
+**Target Users:** Employees, Team Leads, Admin, Logistics  
 
-------------------------------------------------------------------------
+---
 
 ## 2. Summary
 
-Meal Headcount Planner (MHP) is a lightweight internal web application
-designed to replace the current Excel based meal tracking process. It
-enables employees to manage their daily meal participation while
-providing operations teams with real time meal headcounts.
+Meal Headcount Planner (MHP) is a lightweight internal web application designed to replace the Excel-based meal tracking process.
 
-Iteration 1 focuses on daily participation tracking, role-based
-access, and basic headcount visibility for logistics planning.
+The system now supports:
 
-------------------------------------------------------------------------
+- Daily and future meal participation
+- Team-based visibility and bulk handling
+- Special day configuration (Holiday / Office Closed / Celebration)
+- Event-specific meals
+- Work location tracking (Office/WFH)
+- Company-wide WFH declarations
+- Live headcount updates
+- Forecasting
+- Audit logging
+- Monthly WFH allowance tracking with over-limit reporting
+- Operational dashboards for Logistics/Admin
+
+Iteration 3 focuses on operational readiness, forecasting, scheduling flexibility, and accountability.
+
+---
 
 ## 3. Problem Statement
 
-The current Excel-based system for tracking daily meal headcount:
+The Excel-based system:
 
--   Is manual and error-prone
--   Lacks real-time visibility
--   Makes it difficult to track last-minute changes
--   Does not scale well beyond 100+ employees
--   Requires manual aggregation for logistics planning
+- Is manual and error-prone
+- Lack real-time visibility
+- Cannot scale beyond 100+ employees
+- No team-level insights
+- Provides no forecasting capability
+- Has no traceability of edits
+- Does not track WFH allowance
+- Requires manual aggregation for logistics reporting
 
-This results in inaccurate meal counts, food wastage, or shortages, and
-high operational overhead.
+This results in inaccurate counts, food wastage, shortages, and high operational overhead.
 
-------------------------------------------------------------------------
+---
 
-## 4. Goals and Non-Goals
+## 4. Goals (Iteration 1–3)
 
-### Goals (Iteration 1)
+- Replace Excel workflow with a centralized system
+- Default all employees as opted-in unless opted-out
+- Provide role-based access and editing
+- Enable team-level and company-wide visibility
+- Support bulk updates and exception handling
+- Support special day controls
+- Enable live headcount updates
+- Allow future meal scheduling within a limited window
+- Provide headcount forecasting
+- Track work location (Office/WFH)
+- Support company-wide WFH periods
+- Track monthly WFH allowance (soft limit: 5 days)
+- Highlight over-limit employees in reports
+- Provide audit logs for accountability
+- Support event-based meals
+- Provide operational dashboards for logistics
 
--   Provide a simple web interface for employees to manage daily meal
-    participation
--   Default all employees as opted in unless they opt out
--   Allow authorized roles to update entries on behalf of employees
--   Provide real-time headcount per meal type for logistics/admin
--   Replace daily Excel workflow with a centralized system
+---
 
-### Non-Goals (Iteration 1)
+## 5. Tech Stack
 
--   No advanced reporting 
--   No payroll or billing integrations
--   No notifications
--   No complex scheduling beyond "today"
+### Frontend: React
+### Backend: Go (Gin)
+### Storage : JSON-based file storage  
 
-------------------------------------------------------------------------
+---
 
-## 5. Tech Stack and Rationale
 
-### Frontend: **React**
+# 6. Functional Requirements
 
--   As per training instruction
+## Functional Requirement 1 — Authentication & Roles
 
-### Backend: **Go (Gin)**
+- Username/password login
+- JWT-based authentication
+- Roles:
+  - Employee
+  - Team Lead
+  - Admin
 
--   As per training instruction
+---
 
-### Storage: File-based JSON (Iteration 1)
+## Functional Requirement 2 — Daily Meal Participation
 
--   Low setup overhead
--   Easy to inspect and debug
--   Sufficient for \~100+ users with daily records
--   Designed to be replaceable by a relational DB later
+- Employees see meals:
+  - Lunch
+  - Snacks
+  - Iftar
+  - Event Dinner
+  - Optional Dinner
+- Default: Participating
+- Employees can opt out before cutoff
+- Team Lead/Admin can edit on behalf
 
-------------------------------------------------------------------------
+---
 
-## 6. Scope of Changes
+## Functional Requirement 3 — Team-Based Visibility 
 
-### New System
+- Employees see their assigned team
+- Team Leads view participation for their own team
+- Admin view across all teams
+- Data grouped by team
 
--   New backend service (Gin API)
--   New React frontend
--   JSON-based storage for users and daily participation
+---
 
-### Replaces
+## Functional Requirement 4 — Bulk & Exception Handling
 
--   Excel sheets currently used for daily meal tracking
+- Team Lead can bulk update within own team
+- Admin can bulk update across teams
 
-------------------------------------------------------------------------
+---
 
-## 7. Requirements
+## Functional Requirement 5 — Special Day Controls
 
-### Functional Requirements
+Admin can mark a date as:
 
-#### FR1 --- Authentication
+- Office Closed
+- Government Holiday
+- Special Celebration Day (with note)
 
--   Users can log in with username and password
--   The system allows authorized roles(admin) to create new users
--   JWT based authentication
--   Each user has a role:
-    -   Employee
-    -   Team Lead
-    -   Admin
-    -   Logistics
+System behavior:
 
-#### FR2 --- View Today's Meals
+- Office Closed → Meals disabled
+- Holiday/Celebration → Adjust messaging and reporting
 
--   Employees see a list of today's meal types:
-    -   Lunch
-    -   Snacks
-    -   Iftar
-    -   Event Dinner
-    -   Optional Dinner
--   Default status: Participating
+---
 
-#### FR3 --- Employee Opt-Out
+## Functional Requirement 6 — Improved Headcount Reporting
 
--   Employees can opt out of any meal for today
--   Changes allowed until cutoff time 
+Headcount available by:
 
-#### FR4 --- Role-Based Editing
+- Meal type
+- Team
+- Overall total
+- Office vs WFH split
 
--   Team Leads / Admin can update meal participation for any employee
--   Logistics has read-only access to participation but can view totals
+---
 
-#### FR5 --- Headcount View
+## Functional Requirement 7 — Live Updates
 
--   Logistics/Admin can view:
-    -   Total participating count per meal type for today
+- Participation changes update totals instantly
+- No page refresh required
+- WebSocket-based broadcasting
 
-------------------------------------------------------------------------
+---
 
-### Non-Functional Requirements
+## Functional Requirement 8 — Work Location per Date
 
--   JWT based security
--   Support at least 100 concurrent users
--   Basic auditability (who changed what)
+Employees can set:
 
-------------------------------------------------------------------------
+- Office
+- WFH
 
-## 8. User Flows
+Team Lead/Admin can correct entries.
 
-### 8.1 Employee Flow
+---
 
-1.  User logs in
-2.  Lands on "Today's Meals" page
-3.  Sees list of meals with toggle (Participating / Opted Out)
-4.  Changes status for one or more meals
-5.  Clicks Save
-6.  System confirms update
+## Functional Requirement 9 — Company-Wide WFH Period
 
-------------------------------------------------------------------------
+Admin/Logistics can declare a date range as:
 
-### 8.2 Team Lead / Admin Flow (Edit on Behalf)
+- “WFH for everyone”
 
-1.  Logs in
-2.  Navigates to Employee Participation page
-3.  Searches/selects employee
-4.  Views their meal participation for today
-5.  Edits participation
-6.  Saves changes
+System treats all employees as WFH for reporting during that period.
 
-------------------------------------------------------------------------
+---
 
-### 8.3 Logistics Flow (Headcount)
+## Functional Requirement 10 — Future Meal Scheduling 
 
-1.  Logs in
-2.  Navigates to Headcount Dashboard
-3.  Sees totals per meal type for today
+- Employees can set meal participation for future dates
+- Forward window is configurable
+- Admin/Logistics can view forecasted headcount
 
-------------------------------------------------------------------------
+---
 
-## 9. Design
+## Functional Requirement 11 — Event Meals
 
-### 9.1 High-Level Architecture
+Admin/Logistics can create event meals with:
 
-    React Frontend  →  Gin REST API  →  JSON File Storage
-                          |
-                       Auth Middleware
-                          |
-                    Role-Based Access
+- Date
+- Meal type
+- Optional note
 
-------------------------------------------------------------------------
+Employees can opt in/out for event meals separately.
 
+---
 
-### 9.2 API Endpoints (Gin)
+## Functional Requirement 12 — Audit Logging
 
-| Method | Endpoint                     | Description                          | Roles            |
-|--------|------------------------------|--------------------------------------|------------------|
-| POST   | /login                       | Login                                | All              |
-| POST   | /logout                      | Logout                               | All              |
-| POST   | /register                    | Register                             | Admin            |
-| GET    | /meals/today                 | Get today's meal types               | All              |
-| GET    | /me/participation            | Get logged-in user's participation   | Employee+        |
-| PUT    | /me/participation            | Update own participation             | Employee+        |
-| GET    | /users                       | List users                           | Team Lead+       |
-| GET    | /users/:id/participation     | Get participation for a user         | Team Lead+       |
-| PUT    | /users/:id/participation     | Update participation for a user      | Team Lead+       |
-| GET    | /headcount/today             | Get totals per meal                  | Logistics/Admin  |
+System records:
 
+- Who changed participation
+- What was changed
+- When it was changed
+- Whether change was self-edit or role-edit
 
-------------------------------------------------------------------------
+Admin can view audit logs.
 
-## 10. Key Decisions and Trade-offs
+---
 
- | Decision           | Why                                   | Trade-off                                   |
-|--------------------|----------------------------------------|---------------------------------------------|
-| Default opt-in     | Matches real-world expectation         | Must ensure opt-out is easy                 |
-| JSON storage       | Fast to build, no DB setup required    | Limited scalability and concurrency control |
-| Single-day focus   | Simplifies the data model              | Historical reporting is deferred            |
+## Functional Requirement 13 — Operational Dashboard
 
+Dashboard includes:
 
-------------------------------------------------------------------------
+- Daily snapshot
+- Upcoming forecast snapshot
+- Special day indicators
+- Over-limit WFH indicators
+- Team breakdown
+- Office vs WFH split
 
-## 11. Security and Access Control
+---
 
-### Authentication
+## Functional Requirement 14 — Monthly WFH Usage 
 
--   Username/password login
--   JWT based authentication
+- Track WFH days per employee per month
+- Standard allowance: 5 days
+- System does NOT block excess usage
 
-### Authorization 
+---
 
-| Role       | Permissions                              |
-|------------|-------------------------------------------|
-| Employee   | View/update own participation             |
-| Team Lead  | Edit others                               |
-| Admin      | Full access including headcount           |
-| Logistics  | View headcount only                       |
+## Functional Requirement 15 — Over-Limit Indicators & Filters
 
+Team Lead/Admin views:
 
-------------------------------------------------------------------------
+- Highlight employees exceeding 5 days
+- Show:
+  - Number of employees over limit
+  - Total extra WFH days
+- Filter:
+  - Show only over-limit employees
 
-## 12. Testing Plan
+---
 
-### Unit Tests (Backend)
+# 7. Non Functional Requirements
 
--   Participation logic (default opt-in)
--   Headcount aggregation
--   Role permission checks
+- JWT security
+- Role-based middleware authorization
+- Support 100+ concurrent users
+- Real-time updates via WebSocket
+- Basic auditability
+---
 
-### Integration Tests
+# 8. User Flows
 
--   Login flow
--   Employee updating meals
--   Team Lead editing another user
--   Headcount totals correctness
+## 8.1 Employee Flow
 
-------------------------------------------------------------------------
+1. Login  
+2. Select today or future date  
+3. Set:
+   - Meal participation
+   - Work location  
+4. Save  
+5. See live updates  
+6. View monthly WFH usage  
 
-## 13. Operations
+---
 
-### Running Locally
+## 8.2 Team Lead Flow
 
-**Backend**
+1. Login  
+2. View team participation  
+3. Bulk update if required  
+4. Filter over-limit employees  
+5. View WFH summary  
+6. Edit entries when necessary  
 
-``` bash
-go run main.go
+---
+
+## 8.3 Admin / Logistics Flow
+
+1. Login  
+2. View operational dashboard  
+3. Configure:
+   - Special days
+   - Event meals
+   - WFH periods  
+4. Generate announcement draft  
+5. View forecast  
+6. View audit logs  
+7. Analyze over-limit reports  
+
+---
+
+# 9. High-Level Architecture
+
+```
+React Frontend
+        ↓
+Gin REST API
+        ↓
+Auth Middleware
+        ↓
+Role-Based Access
+        ↓
+Business Logic Layer
+        ↓
+JSON Storage
+        ↓
+WebSocket Broadcast Layer
 ```
 
-**Frontend**
+---
 
-``` bash
+# 10. Testing Plan
+
+## Backend Unit Tests
+
+- Participation logic
+- Forecast calculations
+- Bulk updates
+- WFH monthly calculation
+- Over-limit detection
+- Audit log creation
+- Special day behavior
+
+## Integration Tests
+
+- Login flow
+- Team visibility restrictions
+- Live update broadcasting
+- Event meal behavior
+- Company-wide WFH override
+
+---
+
+# 11. Operations
+
+## Run Locally
+
+### Backend
+
+```bash
+go run main.go
+
+```
+### Frontend
+
+```bash
+
 npm install
 npm run dev
+
 ```
-
-
-------------------------------------------------------------------------
-
