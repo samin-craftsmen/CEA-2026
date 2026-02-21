@@ -35,7 +35,7 @@ func main() {
 
 		for _, user := range users {
 			if user.Username == loginUser.Username && user.Password == loginUser.Password {
-				token, err := utils.GenerateToken(user.Username, user.Role)
+				token, err := utils.GenerateToken(user.Username, user.Role, user.Team)
 				if err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": "Token error"})
 					return
@@ -56,14 +56,44 @@ func main() {
 		authorized.GET("/me", func(c *gin.Context) {
 			username := c.GetString("username")
 			role := c.GetString("role")
+			team := c.GetString("team")
 
 			c.JSON(http.StatusOK, gin.H{
 				"username": username,
 				"role":     role,
+				"team":     team,
 			})
 		})
 
 		// ---------- Get Today's Meals  ----------
+		authorized.GET("/meals/today", func(c *gin.Context) {
+			username := c.GetString("username")
+
+			tomorrow := time.Now().Format("2006-01-02")
+
+			data, _ := utils.LoadParticipation()
+
+			for _, entry := range data {
+				if entry.Username == username && entry.Date == tomorrow {
+					c.JSON(http.StatusOK, entry)
+					return
+				}
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"username": username,
+				"date":     tomorrow,
+				"meals": []string{
+					"Lunch",
+					"Snacks",
+					"Iftar",
+					"Event Dinner",
+					"Optional Dinner",
+				},
+			})
+		})
+
+		// ---------- Get Tommorow's Meals  ----------
 		authorized.GET("/meals/tomorrow", func(c *gin.Context) {
 			username := c.GetString("username")
 
@@ -144,7 +174,7 @@ func main() {
 		authorized.POST("/meals/override", func(c *gin.Context) {
 			role := c.GetString("role")
 
-			if role != "admin" && role != "teamlead" {
+			if role != "admin" && role != "teamLead" {
 				c.JSON(http.StatusForbidden, gin.H{"error": "Not allowed"})
 				return
 			}
@@ -296,6 +326,119 @@ func main() {
 			utils.SaveMealItems(data)
 
 			c.JSON(http.StatusOK, gin.H{"message": "Meal items updated"})
+		})
+
+		// ---------- Team Participation View(Team Lead) ----------
+
+		authorized.GET("/teams/meals/today", func(c *gin.Context) {
+			role := c.GetString("role")
+			teamLead_team := c.GetString("team")
+			if role != "teamLead" {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+				return
+			}
+
+			today := time.Now().Format("2006-01-02")
+
+			users, _ := utils.LoadUsers()
+			participation, _ := utils.LoadParticipation()
+
+			result := []models.Participation{}
+
+			for _, user := range users {
+
+				if user.Team != teamLead_team {
+					continue
+				}
+
+				found := false
+
+				for _, entry := range participation {
+					if entry.Username == user.Username && entry.Date == today {
+						result = append(result, entry)
+						found = true
+						break
+					}
+				}
+
+				if !found {
+					// Default opt-in
+					result = append(result, models.Participation{
+						Username: user.Username,
+						Date:     today,
+						Meals: []models.MealType{
+							"Lunch",
+							"Snacks",
+							"Iftar",
+							"Event Dinner",
+							"Optional Dinner",
+						},
+					})
+				}
+			}
+
+			c.JSON(http.StatusOK, result)
+		})
+
+		// -------------------- Admin checks participation based on teams --------------------
+		authorized.GET("/admin/teams/meals/:date", func(c *gin.Context) {
+
+			role := c.GetString("role")
+			if role != "admin" {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Admin only"})
+				return
+			}
+
+			date := c.Param("date")
+
+			users, err := utils.LoadUsers()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not load users"})
+				return
+			}
+
+			participation, err := utils.LoadParticipation()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not load participation"})
+				return
+			}
+
+			// Default meals
+			defaultMeals := []models.MealType{
+				"Lunch",
+				"Snacks",
+				"Iftar",
+				"Event Dinner",
+				"Optional Dinner",
+			}
+
+			// Create result grouped by team
+			result := make(map[string][]gin.H)
+
+			for _, user := range users {
+
+				found := false
+				var userMeals []models.MealType
+
+				for _, entry := range participation {
+					if entry.Username == user.Username && entry.Date == date {
+						userMeals = entry.Meals
+						found = true
+						break
+					}
+				}
+
+				if !found {
+					userMeals = defaultMeals
+				}
+
+				result[user.Team] = append(result[user.Team], gin.H{
+					"username": user.Username,
+					"meals":    userMeals,
+				})
+			}
+
+			c.JSON(http.StatusOK, result)
 		})
 
 	}

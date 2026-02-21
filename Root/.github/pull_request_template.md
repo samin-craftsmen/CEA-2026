@@ -1,32 +1,55 @@
-# Description
+<!-- Link to the issue this PR addresses -->
+Closes #7
 
-Implemented the Iteration 1 features according to the requirements.
+## Dependencies
 
-Fixes #2 
 
----
+- none needed
+
+## What does this PR do?
+
+Implements the backend part for role-based team visibility for daily meal participation. 
 
 ## Type of Change
 
-- Implementation of features
+<!-- Check one -->
+- [X] New feature
 
----
+## What was changed
 
-## What’s Changed
+- Employees can see the team they are assigned to and can view their own participation status.
+- Team leads can view the pariticipation for members of their own team.
+- Admins can view the participation across all teams
+## Changelog
 
-- Implemented features of iteration 1 according to the requirement
+- Feature: Users can now see the participation status of themselves and the employees they lead based on their respective roles.
 
----
 
-## How Has This Been Tested?
+## How to Test
+
+<!-- Describe how you tested your changes -->
 
 - Manual testing
+- Integration testing
 
+## How QA Should Test
+
+- Check if employee can see their participation status.
+- Check if team leads can see their team members participation status.
+- Check if admins can see the participation status of all the members. 
+
+## Rollback Plan
+
+- Revert this PR
 
 ## Checklist
 
-- [ ] User can log in and has access to pages/features based on their roles
-- [ ] Admin and team lead can modify team members meals
-- [ ] Admin can see meal headcount for a specific day
-- [ ] Meals are opted in by default
-- [ ] Admin can add meal items which are visible for others
+- [X] My code follows the project style guidelines
+- [X] All tests pass
+- [X] I have updated documentation (if applicable)
+
+
+
+## Note for Reviewer
+
+- N/A
