@@ -1,58 +1,60 @@
-#  Pull Request: Team-Based Visibility (Backend)
+<!-- Link to the issue this PR addresses -->
+Closes #15
 
-##  Related Ticket #7 
-Feature: Team-Based Visibility (Backend Only)
+## Dependencies
 
----
+- Merge PR #23
 
-##  Description
+## What does this PR do?
 
-This PR implements backend support for role-based team visibility for daily meal participation.
+- Allows Admin to declare a date range as a company-wide “WFH for everyone” period. During this period, employees are treated as WFH by default for reporting and headcount calculations.
 
-### Access Rules
+## Type of Change
 
-- **Employee**
-  - Can view their assigned team.
-  - Can view their own participation only.
+- [x] New feature
 
-- **Team Lead**
-  - Can view daily participation of members within their own team.
-  - Cannot access data from other teams.
+## What was changed
 
-- **Admin / Logistics**
-  - Can view participation data across all teams.
+- **Admin**
+  - Can define a start date and end date for a WFH period.
+  - Can update or remove an existing WFH period.
 
----
+- **System Behavior**
+  - During the declared period:
+    - Employees are treated as WFH by default.
+    - Headcount reporting reflects all users as WFH unless explicitly overridden (if allowed).
+    - Meals are opted out
+  - Outside the declared period:
+    - Normal work-location rules apply.
 
-##  Changes Made
 
-- [ ] Added team field to user model
-- [ ] Implemented team-based filtering logic
-- [ ] Added team-based grouping for participation response
-- [ ] Enforced access restriction for Team Leads
-- [ ] Applied default opt-in logic when participation record is missing
+## Changelog
 
----
 
-##  How to Test
+Feature: Company-wide WFH period
 
-1. Login as **Employee**
-   - Verify only own participation is visible.
 
-2. Login as **Team Lead**
-   - Verify only team members’ participation is visible.
-   - Verify other teams’ data is not accessible.
 
-3. Login as **Admin / Logistics**
-   - Verify all teams’ participation data is accessible.
+## How to Test
 
----
+1. Manual Testing
+2. Integration Testing
 
-##  Acceptance Criteria
+## How QA Should Test
 
-- [ ] Team information is stored with users
-- [ ] Participation data is filtered based on role and team
-- [ ] Team Leads cannot access other teams’ data
-- [ ] Admin have full visibility across teams
-- [ ] No empty team keys in grouped response
+- Create a WFH period
+- Check employee meal and work status
 
+## Rollback Plan
+
+- Revert this PR
+
+
+## Checklist
+
+- [x] All requirements have been met
+- [x] All tests pass
+
+## Note for Reviewer
+
+- Only backend has been implemented.
