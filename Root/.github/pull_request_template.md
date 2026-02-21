@@ -1,58 +1,54 @@
-#  Pull Request: Team-Based Visibility (Backend)
+<!-- Link to the issue this PR addresses -->
+Closes #11
 
-##  Related Ticket #7 
-Feature: Team-Based Visibility (Backend Only)
+## Dependencies
 
----
+- Merge PR #24
 
-##  Description
+## What does this PR do?
 
-This PR implements backend support for role-based team visibility for daily meal participation.
+- Enhances reporting capabilities to provide detailed meal participation headcount breakdowns for better planning and logistics.
 
-### Access Rules
+## Type of Change
 
-- **Employee**
-  - Can view their assigned team.
-  - Can view their own participation only.
+- [x] New feature
 
-- **Team Lead**
-  - Can view daily participation of members within their own team.
-  - Cannot access data from other teams.
+## What was changed
 
-- **Admin / Logistics**
-  - Can view participation data across all teams.
+- Headcount totals available by:
+  - **Meal type**
+  - **Team**
+  - **Overall total**
+  - **Office vs WFH split**
 
----
+- Accessible to:
+  - **Admin**
 
-##  Changes Made
+## Changelog
 
-- [ ] Added team field to user model
-- [ ] Implemented team-based filtering logic
-- [ ] Added team-based grouping for participation response
-- [ ] Enforced access restriction for Team Leads
-- [ ] Applied default opt-in logic when participation record is missing
+- Feature: Improved Headcount Reporting
 
----
 
-##  How to Test
 
-1. Login as **Employee**
-   - Verify only own participation is visible.
+## How to Test
 
-2. Login as **Team Lead**
-   - Verify only team members’ participation is visible.
-   - Verify other teams’ data is not accessible.
+1. Manual Testing
+2. Integration Testing
 
-3. Login as **Admin / Logistics**
-   - Verify all teams’ participation data is accessible.
+## How QA Should Test
 
----
+- Log in as admin.
+- Check headcount totals by different tags.
 
-##  Acceptance Criteria
+## Rollback Plan
 
-- [ ] Team information is stored with users
-- [ ] Participation data is filtered based on role and team
-- [ ] Team Leads cannot access other teams’ data
-- [ ] Admin have full visibility across teams
-- [ ] No empty team keys in grouped response
+- Revert this PR
 
+## Checklist
+
+- [x] All requirements have been met
+- [x] All tests pass
+
+## Note for Reviewer
+
+- Only backend has been implemented
