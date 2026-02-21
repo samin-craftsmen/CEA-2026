@@ -1,12 +1,13 @@
-Closes #17
+
+Closes #10
 
 ## Dependencies
 
-- Merge PR #19
+- Merge PR #27
 
 ## What does this PR do?
 
-- Implements the frontend part for bulk and exception handling for daily meal participation. Team Leads/Admin can apply bulk actions for their scope (e.g., mark a group as opted out due to offsite/event). 
+- Allows Admin and Logistics roles to configure special day types that affect meal availability and participation behavior. Implements Only the backend.
 
 ## Type of Change
 
@@ -14,12 +15,17 @@ Closes #17
 
 ## What was changed
 
-- Team lead can now apply bulk actions to his own team members.
-- Admin can now apply bulk actions across all teams
+- **Admin**
+  - Can mark a date as:
+    - Office Closed
+    - Government Holiday
+    - Special Celebration Day (with optional note)
+  - Can update or remove a special day setting.
 
 ## Changelog
 
-- Feature: Implement Bulk and exception handling
+Feature: Implemented Special Day Controls
+
 
 
 ## How to Test
@@ -29,18 +35,19 @@ Closes #17
 
 ## How QA Should Test
 
-- Log in as team lead and apply bulk actions to his own team members
-- Log in as admin and apply bulk actions to members across all teams.
+- Choose a date as office closed and check meal participation.
+- Choose government holiday and check only day status change.
+- Choose special day celebration and see special day message
 
 ## Rollback Plan
 
 - Revert this PR
 
+
 ## Checklist
 
-- [X] All features work as expected
-- [X] All tests pass
-
+- [x] Features work as expected
+- [x] All tests pass
 ## Note for Reviewer
 
-- Frontend is integrated.
+- Frontend has been implemented
