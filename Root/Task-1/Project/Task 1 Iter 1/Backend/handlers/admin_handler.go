@@ -317,7 +317,7 @@ func SetSpecialDay(c *gin.Context) {
 
 	// ------------------ If OFFICE_CLOSED ------------------
 
-	if req.Type == "OFFICE_CLOSED" {
+	if req.Type == "office_closed" {
 
 		participationData, err := utils.LoadParticipation()
 		if err != nil {
@@ -386,9 +386,61 @@ func GetDayStatus(c *gin.Context) {
 	})
 }
 
+// ------------------ Admin: Remove special day -------------------------- //
+func RemoveSpecialDay(c *gin.Context) {
+
+	role := c.GetString("role")
+	if role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not allowed"})
+		return
+	}
+
+	date := c.Param("date")
+
+	// ---------------- Remove from day_controls.json ----------------
+	data, err := utils.LoadDayControls()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load day controls"})
+		return
+	}
+
+	newDayControls := []models.DayControl{}
+	for _, d := range data {
+		if d.Date != date {
+			newDayControls = append(newDayControls, d)
+		}
+	}
+
+	err = utils.SaveDayControls(newDayControls)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save day controls"})
+		return
+	}
+
+	// ---------------- Remove participation entries for that date ----------------
+	participationData, err := utils.LoadParticipation()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load participation"})
+		return
+	}
+
+	newParticipation := []models.Participation{}
+	for _, p := range participationData {
+		if p.Date != date {
+			newParticipation = append(newParticipation, p)
+		}
+	}
+
+	err = utils.SaveParticipation(newParticipation)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save participation"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Special day removed and participation reset"})
+}
 func UpdateWorkLocationByAdmin(c *gin.Context) {
 
-	// 🔐 Role check
 	role := c.GetString("role")
 
 	if role != "admin" {
