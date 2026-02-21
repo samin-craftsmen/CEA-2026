@@ -1,58 +1,65 @@
-#  Pull Request: Team-Based Visibility (Backend)
+<!-- Link to the issue this PR addresses -->
+Closes #13
 
-##  Related Ticket #7 
-Feature: Team-Based Visibility (Backend Only)
+## Dependencies
 
----
+- Merge PR #22
 
-##  Description
+## What does this PR do?
 
-This PR implements backend support for role-based team visibility for daily meal participation.
+- Allows admin to generate a copy/paste ready annoucement message for a selected date, summarizing meal participation and special-day notice.
 
-### Access Rules
+## Type of Change
 
-- **Employee**
-  - Can view their assigned team.
-  - Can view their own participation only.
+- [x] New feature
 
-- **Team Lead**
-  - Can view daily participation of members within their own team.
-  - Cannot access data from other teams.
+## What was changed
 
-- **Admin / Logistics**
-  - Can view participation data across all teams.
+- **Admin**
+  - Can select a date.
+  - Can generate a formatted announcement message.
+  - Can copy the message easily for sharing (e.g., Slack, Email).
 
----
+- **Message Content Includes**
+  - Meal-wise totals 
+  - Overall headcount
+  - Office vs WFH split (if applicable)
+  - Special day status:
+    - Office Closed
+    - Government Holiday
+    - Special Celebration Day (including note)
 
-##  Changes Made
+## Changelog
 
-- [ ] Added team field to user model
-- [ ] Implemented team-based filtering logic
-- [ ] Added team-based grouping for participation response
-- [ ] Enforced access restriction for Team Leads
-- [ ] Applied default opt-in logic when participation record is missing
 
----
+- Feature: Daily announcement draft
 
-##  How to Test
 
-1. Login as **Employee**
-   - Verify only own participation is visible.
 
-2. Login as **Team Lead**
-   - Verify only team members’ participation is visible.
-   - Verify other teams’ data is not accessible.
+## How to Test
 
-3. Login as **Admin / Logistics**
-   - Verify all teams’ participation data is accessible.
+<!-- Describe how you tested your changes -->
 
----
+1. Manual Testing
+2. Integration Testing
 
-##  Acceptance Criteria
+## How QA Should Test
 
-- [ ] Team information is stored with users
-- [ ] Participation data is filtered based on role and team
-- [ ] Team Leads cannot access other teams’ data
-- [ ] Admin have full visibility across teams
-- [ ] No empty team keys in grouped response
+- Log in as admin
+- Select a date
+- Copy the message that includes employee informations
 
+## Rollback Plan
+
+- Revert this PR
+
+
+## Checklist
+
+- [ ] All requirements have been met
+- [ ] All tests pass
+
+
+## Note for Reviewer
+
+- Only backend has been implemented
