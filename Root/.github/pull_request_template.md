@@ -1,58 +1,60 @@
-#  Pull Request: Team-Based Visibility (Backend)
+<!-- Link to the issue this PR addresses -->
+Closes #
 
-##  Related Ticket #7 
-Feature: Team-Based Visibility (Backend Only)
+## Dependencies
 
----
+- Merge PR #21
 
-##  Description
+## What does this PR do?
 
-This PR implements backend support for role-based team visibility for daily meal participation.
+- Allows employees to specify their work location for a selected date and enables team leads/admins to manage or correct entries when necessary
+## Type of Change
 
-### Access Rules
+- [x] New feature
+
+## What was changed
 
 - **Employee**
-  - Can view their assigned team.
-  - Can view their own participation only.
+  - Can set work location per date:
+    - Office
+    - WFH
+  - Can update their own selection before cutoff time (if applicable).
 
 - **Team Lead**
-  - Can view daily participation of members within their own team.
-  - Cannot access data from other teams.
+  - Can view work location of their team members.
+  - Can correct or update missing/incorrect entries within their team.
 
-- **Admin / Logistics**
-  - Can view participation data across all teams.
+- **Admin**
+  - Can view and modify work location for any user.
 
----
 
-##  Changes Made
+## Changelog
 
-- [ ] Added team field to user model
-- [ ] Implemented team-based filtering logic
-- [ ] Added team-based grouping for participation response
-- [ ] Enforced access restriction for Team Leads
-- [ ] Applied default opt-in logic when participation record is missing
+- Feature: Work Location Update 
 
----
+## How to Test
 
-##  How to Test
+<!-- Describe how you tested your changes -->
 
-1. Login as **Employee**
-   - Verify only own participation is visible.
+1. Manual Testing
+2. Integration Testing
 
-2. Login as **Team Lead**
-   - Verify only team members’ participation is visible.
-   - Verify other teams’ data is not accessible.
+## How QA Should Test
 
-3. Login as **Admin / Logistics**
-   - Verify all teams’ participation data is accessible.
+- As an employee change your work location and check status
+- As a team lead change the work location of you team member
+- As an admin change the work location of any employee across all teams
 
----
+## Rollback Plan
 
-##  Acceptance Criteria
+- Revert this PR
 
-- [ ] Team information is stored with users
-- [ ] Participation data is filtered based on role and team
-- [ ] Team Leads cannot access other teams’ data
-- [ ] Admin have full visibility across teams
-- [ ] No empty team keys in grouped response
+## Checklist
 
+- [x] All reqirements have been met
+- [x] All tests pass
+
+
+## Note for Reviewer
+
+- Only backend has been implemented
