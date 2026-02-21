@@ -1,58 +1,54 @@
-#  Pull Request: Team-Based Visibility (Backend)
 
-##  Related Ticket #7 
-Feature: Team-Based Visibility (Backend Only)
+Closes #10
 
----
+## Dependencies
 
-##  Description
+- Merge PR #20
 
-This PR implements backend support for role-based team visibility for daily meal participation.
+## What does this PR do?
 
-### Access Rules
+- Allows Admin and Logistics roles to configure special day types that affect meal availability and participation behavior. Implements Only the backend.
 
-- **Employee**
-  - Can view their assigned team.
-  - Can view their own participation only.
+## Type of Change
 
-- **Team Lead**
-  - Can view daily participation of members within their own team.
-  - Cannot access data from other teams.
+- [X] New feature
 
-- **Admin / Logistics**
-  - Can view participation data across all teams.
+## What was changed
 
----
+- **Admin**
+  - Can mark a date as:
+    - Office Closed
+    - Government Holiday
+    - Special Celebration Day (with optional note)
+  - Can update or remove a special day setting.
 
-##  Changes Made
+## Changelog
 
-- [ ] Added team field to user model
-- [ ] Implemented team-based filtering logic
-- [ ] Added team-based grouping for participation response
-- [ ] Enforced access restriction for Team Leads
-- [ ] Applied default opt-in logic when participation record is missing
+Feature: Implemented Special Day Controls
 
----
 
-##  How to Test
 
-1. Login as **Employee**
-   - Verify only own participation is visible.
+## How to Test
 
-2. Login as **Team Lead**
-   - Verify only team members’ participation is visible.
-   - Verify other teams’ data is not accessible.
+1. Manual Testing
+2. Integration Testing
+3.
 
-3. Login as **Admin / Logistics**
-   - Verify all teams’ participation data is accessible.
+## How QA Should Test
 
----
+- Choose a date as office closed and check meal participation.
+- Choose government holiday and check only day status change.
+- Choose special day celebration and see special day message
 
-##  Acceptance Criteria
+## Rollback Plan
 
-- [ ] Team information is stored with users
-- [ ] Participation data is filtered based on role and team
-- [ ] Team Leads cannot access other teams’ data
-- [ ] Admin have full visibility across teams
-- [ ] No empty team keys in grouped response
+- Revert this PR
 
+
+## Checklist
+
+- [x] Features work as expected
+- [x] All tests pass
+## Note for Reviewer
+
+- Only backend implemented
