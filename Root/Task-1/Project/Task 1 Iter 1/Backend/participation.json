@@ -103,5 +103,52 @@
     "username": "employee201",
     "date": "2026-02-20",
     "meals": null
+  },
+  {
+    "username": "teamLead101",
+    "date": "2026-02-22",
+    "meals": [
+      "Lunch",
+      "Iftar",
+      "Event Dinner",
+      "Optional Dinner",
+      "Snacks"
+    ]
+  },
+  {
+    "username": "employee101",
+    "date": "2026-02-22",
+    "meals": [
+      "Lunch",
+      "Iftar",
+      "Event Dinner",
+      "Optional Dinner",
+      "Snacks"
+    ]
+  },
+  {
+    "username": "employee102",
+    "date": "2026-02-22",
+    "meals": [
+      "Lunch",
+      "Iftar",
+      "Event Dinner",
+      "Optional Dinner",
+      "Snacks"
+    ]
+  },
+  {
+    "username": "admin1",
+    "date": "2026-02-22",
+    "meals": [
+      "Snacks"
+    ]
+  },
+  {
+    "username": "employee201",
+    "date": "2026-02-22",
+    "meals": [
+      "Snacks"
+    ]
   }
 ]

@@ -1,46 +1,46 @@
-Closes #18
+Closes #17
 
 ## Dependencies
 
-- Merge PR #26
-
+- Merge PR #19
 
 ## What does this PR do?
 
-This PR proposes the technical design document for the iteration 3 of the meal headcount planner project.
+- Implements the frontend part for bulk and exception handling for daily meal participation. Team Leads/Admin can apply bulk actions for their scope (e.g., mark a group as opted out due to offsite/event). 
 
 ## Type of Change
 
-- [X] Documentation
+- [X] New feature
 
 ## What was changed
 
-- Included Iteration 3 requirements into the technical design document.
-- did minor folder restructure
-- The technical design document now proposes a design that includes all the requirements from the iteartion 1-3.
+- Team lead can now apply bulk actions to his own team members.
+- Admin can now apply bulk actions across all teams
+
 ## Changelog
 
-- Updated project log
-- added .gitignore
-- Restructured folder structure
-- Updated PR template
+- Feature: Implement Bulk and exception handling
+
 
 ## How to Test
 
-- N/A
+1. Manual Testing
+2. Integration Testing
 
 ## How QA Should Test
 
-- N/A
+- Log in as team lead and apply bulk actions to his own team members
+- Log in as admin and apply bulk actions to members across all teams.
 
 ## Rollback Plan
 
-- N/A
+- Revert this PR
 
 ## Checklist
 
-- [X] The design document follows the requirements from the iteration 1-3 files
+- [X] All features work as expected
+- [X] All tests pass
 
 ## Note for Reviewer
 
-- N/A
+- Frontend is integrated.

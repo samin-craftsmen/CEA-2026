@@ -36,6 +36,162 @@ export default function MealPlanner() {
   const [allTeamsData, setAllTeamsData] = useState<any>(null);
   const [adminDate, setAdminDate] = useState("");
 
+  const [bulkDate, setBulkDate] = useState("");
+  const [bulkMeals, setBulkMeals] = useState<string[]>([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  const [adminBulkDate, setAdminBulkDate] = useState("");
+  const [adminBulkMeals, setAdminBulkMeals] = useState<string[]>([]);
+  const [adminBulkLoading, setAdminBulkLoading] = useState(false);
+  // ============================= Admin Bulk Ops ==========================//
+  const toggleAdminBulkMeal = (meal: string) => {
+    if (adminBulkMeals.includes(meal)) {
+      setAdminBulkMeals(adminBulkMeals.filter(m => m !== meal));
+    } else {
+      setAdminBulkMeals([...adminBulkMeals, meal]);
+    }
+  };
+
+  const toggleBulkMeal = (meal: string) => {
+    if (bulkMeals.includes(meal)) {
+      setBulkMeals(bulkMeals.filter(m => m !== meal));
+    } else {
+      setBulkMeals([...bulkMeals, meal]);
+    }
+  };
+
+  const adminBulkOptOut = async () => {
+    if (!adminBulkDate || adminBulkMeals.length === 0) {
+      alert("Select date and at least one meal");
+      return;
+    }
+
+    setAdminBulkLoading(true);
+
+    const res = await fetch(
+      `http://localhost:8080/admin/meals/opt-out/${adminBulkDate}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          date: adminBulkDate,
+          meals: adminBulkMeals,
+        }),
+      }
+    );
+
+    const data = await res.json();
+    setAdminBulkLoading(false);
+
+    if (!res.ok) {
+      alert(data.error || "Operation failed");
+      return;
+    }
+
+    alert(`Opt-out applied to ${data.updated_count} users`);
+  };
+
+  const adminBulkOptIn = async () => {
+    if (!adminBulkDate || adminBulkMeals.length === 0) {
+      alert("Select date and at least one meal");
+      return;
+    }
+
+    setAdminBulkLoading(true);
+
+    const res = await fetch(
+      `http://localhost:8080/admin/meals/opt-in/${adminBulkDate}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          date: adminBulkDate,
+          meals: adminBulkMeals,
+        }),
+      }
+    );
+
+    const data = await res.json();
+    setAdminBulkLoading(false);
+
+    if (!res.ok) {
+      alert(data.error || "Operation failed");
+      return;
+    }
+
+    alert(`Opt-in applied to ${data.updated_count} users`);
+  };
+
+  //======================== Team Bulk In Option =======================//
+  const bulkOptOut = async () => {
+    if (!bulkDate || bulkMeals.length === 0) {
+      alert("Select date and at least one meal");
+      return;
+    }
+
+    setBulkLoading(true);
+
+    const res = await fetch("http://localhost:8080/teams/meals/optout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        date: bulkDate,
+        meals: bulkMeals,
+      }),
+    });
+
+    const data = await res.json();
+    setBulkLoading(false);
+
+    if (!res.ok) {
+      alert(data.error || "Operation failed");
+      return;
+    }
+
+    alert(`Opt-out successful for ${data.updated_count} members`);
+  };
+
+  // ================= Team Bulk Out Option ==============================//
+  const bulkOptIn = async () => {
+    if (!bulkDate || bulkMeals.length === 0) {
+      alert("Select date and at least one meal");
+      return;
+    }
+
+    setBulkLoading(true);
+
+    const res = await fetch("http://localhost:8080/teams/meals/optin", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        date: bulkDate,
+        meals: bulkMeals,
+      }),
+    });
+
+    const data = await res.json();
+    setBulkLoading(false);
+
+    if (!res.ok) {
+      alert(data.error || "Operation failed");
+      return;
+    }
+
+    alert(`Opt-in successful for ${data.updated_count} members`);
+  };
+
   // ================= FETCH ALL TEAMS PARTICIPATION (ADMIN ONLY) =================
   const fetchAllTeamsParticipation = async () => {
     if (!adminDate) {
@@ -396,6 +552,98 @@ export default function MealPlanner() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ================= TEAM LEAD BULK HANDLING ================= */}
+        {role === "teamlead" && (
+          <div className="section">
+            <h3>Bulk & Exception Handling (Team)</h3>
+
+            <input
+              className="input"
+              type="date"
+              value={bulkDate}
+              onChange={e => setBulkDate(e.target.value)}
+            />
+
+            <div className="meal-grid">
+              {allMeals.map(meal => (
+                <label key={meal} className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={bulkMeals.includes(meal)}
+                    onChange={() => toggleBulkMeal(meal)}
+                  />
+                  {meal}
+                </label>
+              ))}
+            </div>
+
+            <div style={{ marginTop: "12px" }}>
+              <button
+                className="btn warning"
+                onClick={bulkOptOut}
+                disabled={bulkLoading}
+              >
+                Bulk Opt-Out
+              </button>
+
+              <button
+                className="btn primary"
+                onClick={bulkOptIn}
+                disabled={bulkLoading}
+                style={{ marginLeft: "10px" }}
+              >
+                Bulk Opt-In
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ================= ADMIN BULK HANDLING (EVERYONE) ================= */}
+        {role === "admin" && (
+          <div className="section">
+            <h3>Admin Bulk & Exception Handling (All Employees)</h3>
+
+            <input
+              className="input"
+              type="date"
+              value={adminBulkDate}
+              onChange={e => setAdminBulkDate(e.target.value)}
+            />
+
+            <div className="meal-grid">
+              {allMeals.map(meal => (
+                <label key={meal} className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={adminBulkMeals.includes(meal)}
+                    onChange={() => toggleAdminBulkMeal(meal)}
+                  />
+                  {meal}
+                </label>
+              ))}
+            </div>
+
+            <div style={{ marginTop: "12px" }}>
+              <button
+                className="btn warning"
+                onClick={adminBulkOptOut}
+                disabled={adminBulkLoading}
+              >
+                Opt-Out For Everyone
+              </button>
+
+              <button
+                className="btn primary"
+                onClick={adminBulkOptIn}
+                disabled={adminBulkLoading}
+                style={{ marginLeft: "10px" }}
+              >
+                Opt-In For Everyone
+              </button>
+            </div>
           </div>
         )}
 
