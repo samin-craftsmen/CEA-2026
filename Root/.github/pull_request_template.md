@@ -1,58 +1,52 @@
-#  Pull Request: Team-Based Visibility (Backend)
+<!-- Link to the issue this PR addresses -->
+Closes #9
 
-##  Related Ticket #7 
-Feature: Team-Based Visibility (Backend Only)
+## Dependencies
 
----
+- Merge PR #8
 
-##  Description
+## What does this PR do?
 
-This PR implements backend support for role-based team visibility for daily meal participation.
+- Implements the backend part for bulk and exception handling for daily meal participation. Team Leads/Admin can apply bulk actions for their scope (e.g., mark a group as opted out due to offsite/event). It also refactors the code to make it more maintainable
 
-### Access Rules
+## Type of Change
 
-- **Employee**
-  - Can view their assigned team.
-  - Can view their own participation only.
+<!-- Check one -->
+- [X] New feature
+- [X] Refactor
 
-- **Team Lead**
-  - Can view daily participation of members within their own team.
-  - Cannot access data from other teams.
+## What was changed
 
-- **Admin / Logistics**
-  - Can view participation data across all teams.
+- Team lead can now apply bulk actions to his own team members.
+- Admin can now apply bulk actions across all teams
 
----
+## Changelog
 
-##  Changes Made
+- Feature: Implement Bulk and exception handling
 
-- [ ] Added team field to user model
-- [ ] Implemented team-based filtering logic
-- [ ] Added team-based grouping for participation response
-- [ ] Enforced access restriction for Team Leads
-- [ ] Applied default opt-in logic when participation record is missing
 
----
+## How to Test
 
-##  How to Test
+<!-- Describe how you tested your changes -->
 
-1. Login as **Employee**
-   - Verify only own participation is visible.
+1. Manual Testing
+2. Integration Testing
 
-2. Login as **Team Lead**
-   - Verify only team members’ participation is visible.
-   - Verify other teams’ data is not accessible.
+## How QA Should Test
 
-3. Login as **Admin / Logistics**
-   - Verify all teams’ participation data is accessible.
+- Log in as team lead and apply bulk actions to his own team members
+- Log in as admin and apply bulk actions to members across all teams.
 
----
+## Rollback Plan
 
-##  Acceptance Criteria
+- Revert this PR
 
-- [ ] Team information is stored with users
-- [ ] Participation data is filtered based on role and team
-- [ ] Team Leads cannot access other teams’ data
-- [ ] Admin have full visibility across teams
-- [ ] No empty team keys in grouped response
+## Checklist
 
+- [X] My code follows the project style guidelines
+- [X] All tests pass
+- [X] The features work as expected
+
+## Note for Reviewer
+
+- This only implements the backend part.
