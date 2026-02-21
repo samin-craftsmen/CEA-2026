@@ -1,58 +1,46 @@
-#  Pull Request: Team-Based Visibility (Backend)
+Closes #18
 
-##  Related Ticket #7 
-Feature: Team-Based Visibility (Backend Only)
+## Dependencies
 
----
+- Merge PR #26
 
-##  Description
 
-This PR implements backend support for role-based team visibility for daily meal participation.
+## What does this PR do?
 
-### Access Rules
+This PR proposes the technical design document for the iteration 3 of the meal headcount planner project.
 
-- **Employee**
-  - Can view their assigned team.
-  - Can view their own participation only.
+## Type of Change
 
-- **Team Lead**
-  - Can view daily participation of members within their own team.
-  - Cannot access data from other teams.
+- [X] Documentation
 
-- **Admin / Logistics**
-  - Can view participation data across all teams.
+## What was changed
 
----
+- Included Iteration 3 requirements into the technical design document.
+- did minor folder restructure
+- The technical design document now proposes a design that includes all the requirements from the iteartion 1-3.
+## Changelog
 
-##  Changes Made
+- Updated project log
+- added .gitignore
+- Restructured folder structure
+- Updated PR template
 
-- [ ] Added team field to user model
-- [ ] Implemented team-based filtering logic
-- [ ] Added team-based grouping for participation response
-- [ ] Enforced access restriction for Team Leads
-- [ ] Applied default opt-in logic when participation record is missing
+## How to Test
 
----
+- N/A
 
-##  How to Test
+## How QA Should Test
 
-1. Login as **Employee**
-   - Verify only own participation is visible.
+- N/A
 
-2. Login as **Team Lead**
-   - Verify only team members’ participation is visible.
-   - Verify other teams’ data is not accessible.
+## Rollback Plan
 
-3. Login as **Admin / Logistics**
-   - Verify all teams’ participation data is accessible.
+- N/A
 
----
+## Checklist
 
-##  Acceptance Criteria
+- [X] The design document follows the requirements from the iteration 1-3 files
 
-- [ ] Team information is stored with users
-- [ ] Participation data is filtered based on role and team
-- [ ] Team Leads cannot access other teams’ data
-- [ ] Admin have full visibility across teams
-- [ ] No empty team keys in grouped response
+## Note for Reviewer
 
+- N/A
