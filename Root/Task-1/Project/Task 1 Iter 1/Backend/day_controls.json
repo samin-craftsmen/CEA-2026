@@ -3,5 +3,9 @@
     "date": "2026-02-20",
     "type": "OFFICE_CLOSED",
     "note": "Maintenance work"
+  },
+  {
+    "date": "2026-02-22",
+    "type": "office_closed"
   }
 ]

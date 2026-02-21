@@ -15,6 +15,7 @@ func RegisterAdminRoutes(rg *gin.RouterGroup) {
 	rg.POST("admin/day-controls", handlers.SetSpecialDay)
 
 	rg.GET("admin/day-controls/:date", handlers.GetDayStatus)
+	rg.DELETE("admin/day-controls/:date", handlers.RemoveSpecialDay)
 
 	rg.POST("/admin/work-location/update", handlers.UpdateWorkLocationByAdmin)
 	rg.GET("/admin/work-location", handlers.GetWorkLocationByAdmin)

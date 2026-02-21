@@ -43,6 +43,84 @@ export default function MealPlanner() {
   const [adminBulkDate, setAdminBulkDate] = useState("");
   const [adminBulkMeals, setAdminBulkMeals] = useState<string[]>([]);
   const [adminBulkLoading, setAdminBulkLoading] = useState(false);
+
+  const [specialDate, setSpecialDate] = useState("");
+const [specialType, setSpecialType] = useState("office_closed");
+const [specialNote, setSpecialNote] = useState("");
+const [currentDayStatus, setCurrentDayStatus] = useState<any>(null);
+
+// ========================= Special Day controls =========================//
+const setSpecialDay = async () => {
+  if (!specialDate) {
+    alert("Select a date");
+    return;
+  }
+
+  const res = await fetch("http://localhost:8080/admin/day-controls", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      date: specialDate,
+      type: specialType,
+      note:
+        specialType === "special_celebration" && specialNote
+          ? specialNote
+          : null,
+    }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    alert(data.error || "Failed");
+    return;
+  }
+
+  alert("Special day saved!");
+  fetchDayStatus();
+};
+const fetchDayStatus = async () => {
+  if (!specialDate) return;
+
+  const res = await fetch(
+    `http://localhost:8080/admin/day-controls/${specialDate}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  const data = await res.json();
+  setCurrentDayStatus(data);
+};
+const removeSpecialDay = async () => {
+  if (!specialDate) {
+    alert("Select a date");
+    return;
+  }
+
+  const res = await fetch(
+    `http://localhost:8080/admin/day-controls/${specialDate}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    alert(data.error || "Failed");
+    return;
+  }
+
+  alert("Special day removed!");
+  setCurrentDayStatus(null);
+};
   // ============================= Admin Bulk Ops ==========================//
   const toggleAdminBulkMeal = (meal: string) => {
     if (adminBulkMeals.includes(meal)) {
@@ -646,6 +724,72 @@ export default function MealPlanner() {
             </div>
           </div>
         )}
+      {/*================== Special Day controls ========================== */}
+        {role === "admin" && (
+  <div className="section">
+    <h3>Special Day Controls</h3>
+
+    <input
+      className="input"
+      type="date"
+      value={specialDate}
+      onChange={e => setSpecialDate(e.target.value)}
+    />
+
+    <select
+      className="input"
+      value={specialType}
+      onChange={e => setSpecialType(e.target.value)}
+    >
+      <option value="office_closed">Office Closed</option>
+      <option value="government_holiday">Government Holiday</option>
+      <option value="special_celebration">
+        Special Celebration Day
+      </option>
+    </select>
+
+    {specialType === "special_celebration" && (
+      <input
+        className="input"
+        placeholder="Celebration note"
+        value={specialNote}
+        onChange={e => setSpecialNote(e.target.value)}
+      />
+    )}
+
+    <div style={{ marginTop: "10px" }}>
+      <button className="btn primary" onClick={setSpecialDay}>
+        Save
+      </button>
+
+      <button
+        className="btn secondary"
+        onClick={fetchDayStatus}
+        style={{ marginLeft: "10px" }}
+      >
+        Check Status
+      </button>
+
+      <button
+        className="btn danger"
+        onClick={removeSpecialDay}
+        style={{ marginLeft: "10px" }}
+      >
+        Remove
+      </button>
+    </div>
+
+    {currentDayStatus && (
+      <div style={{ marginTop: "15px" }}>
+        <strong>Current Status:</strong>
+        <p>Type: {currentDayStatus.type}</p>
+        {currentDayStatus.note && (
+          <p>Note: {currentDayStatus.note}</p>
+        )}
+      </div>
+    )}
+  </div>
+)}
 
         <button className="btn danger logout" onClick={logout}>
           Logout
