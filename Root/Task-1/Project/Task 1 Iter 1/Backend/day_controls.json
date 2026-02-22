@@ -1,24 +1,5 @@
 [
   {
-    "date": "2026-02-20",
-    "type": "OFFICE_CLOSED",
-    "note": "Maintenance work"
-  },
-  {
-    "date": "2026-02-22",
-    "type": "office_closed"
-  },
-  {
-    "date": "2026-02-24",
-    "type": "COMPANY_WFH",
-    "note": "Khabar nai"
-  },
-  {
-    "date": "2026-02-25",
-    "type": "COMPANY_WFH",
-    "note": "Khabar nai"
-  },
-  {
     "date": "2026-02-26",
     "type": "COMPANY_WFH",
     "note": "Khabar nai"
@@ -26,11 +7,6 @@
   {
     "date": "2026-02-27",
     "type": "COMPANY_WFH",
-    "note": "abc"
-  },
-  {
-    "date": "2026-02-28",
-    "type": "COMPANY_WFH",
-    "note": "abc"
+    "note": "Khabar nai"
   }
 ]

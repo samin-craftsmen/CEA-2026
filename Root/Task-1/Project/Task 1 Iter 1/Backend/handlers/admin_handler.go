@@ -811,6 +811,7 @@ func SetCompanyWFH(c *gin.Context) {
 }
 
 // ---------- Headcount By Team ----------
+// ---------- Headcount By Team ----------
 func HeadcountByTeam(c *gin.Context) {
 	role := c.GetString("role")
 	if role != "admin" {
@@ -824,6 +825,7 @@ func HeadcountByTeam(c *gin.Context) {
 
 	teamMeals := map[string]map[string]int{}
 
+	// Initialize all teams with all meals
 	for _, user := range users {
 		if _, exists := teamMeals[user.Team]; !exists {
 			teamMeals[user.Team] = map[string]int{
@@ -834,13 +836,38 @@ func HeadcountByTeam(c *gin.Context) {
 				"Optional Dinner": 0,
 			}
 		}
+	}
 
-		for _, p := range participation {
-			if p.Username == user.Username && p.Date == date && p.Meals != nil {
-				for _, meal := range p.Meals {
-					teamMeals[user.Team][string(meal)]++
+	// Track which users have entries for this date
+	userHasEntry := make(map[string]bool)
+
+	for _, p := range participation {
+		if p.Date == date {
+			userHasEntry[p.Username] = true
+			// Only count if meals is not nil (nil means opted out)
+			if p.Meals != nil {
+				// Find user's team
+				for _, user := range users {
+					if user.Username == p.Username {
+						for _, meal := range p.Meals {
+							teamMeals[user.Team][string(meal)]++
+						}
+						break
+					}
 				}
 			}
+		}
+	}
+
+	// For users with no entry for this date, they default to all meals
+	for _, user := range users {
+		if !userHasEntry[user.Username] {
+			// Default: all meals opted in
+			teamMeals[user.Team]["Lunch"]++
+			teamMeals[user.Team]["Snacks"]++
+			teamMeals[user.Team]["Iftar"]++
+			teamMeals[user.Team]["Event Dinner"]++
+			teamMeals[user.Team]["Optional Dinner"]++
 		}
 	}
 
@@ -856,21 +883,14 @@ func HeadcountByLocation(c *gin.Context) {
 	}
 
 	date := c.Param("date")
-	participation, _ := utils.LoadParticipation()
 	workLocations, _ := utils.LoadWorkLocations()
 	users, _ := utils.LoadUsers()
 
-	locationMeals := map[string]map[string]int{
-		"Lunch":           {"Office": 0, "WFH": 0},
-		"Snacks":          {"Office": 0, "WFH": 0},
-		"Iftar":           {"Office": 0, "WFH": 0},
-		"Event Dinner":    {"Office": 0, "WFH": 0},
-		"Optional Dinner": {"Office": 0, "WFH": 0},
-	}
+	officeCount := 0
+	wfhCount := 0
 
 	for _, user := range users {
-		// Get user's work location (default: Office)
-		location := "Office"
+		location := "Office" // default
 		for _, wl := range workLocations {
 			if wl.Username == user.Username && wl.Date == date {
 				location = wl.Location
@@ -878,17 +898,17 @@ func HeadcountByLocation(c *gin.Context) {
 			}
 		}
 
-		// Count meals by location
-		for _, p := range participation {
-			if p.Username == user.Username && p.Date == date && p.Meals != nil {
-				for _, meal := range p.Meals {
-					locationMeals[string(meal)][location]++
-				}
-			}
+		if location == "WFH" {
+			wfhCount++
+		} else {
+			officeCount++
 		}
 	}
 
-	c.JSON(http.StatusOK, locationMeals)
+	c.JSON(http.StatusOK, gin.H{
+		"office": officeCount,
+		"wfh":    wfhCount,
+	})
 }
 
 // ---------- Overall Headcount Summary ----------

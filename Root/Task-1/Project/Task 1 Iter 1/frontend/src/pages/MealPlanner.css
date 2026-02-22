@@ -118,3 +118,25 @@
   border-radius: 8px;
   margin-bottom: 8px;
 }
+
+.team-headcount {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  border-left: 3px solid #0066cc;
+}
+
+.location-headcount {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  border-left: 3px solid #66bb6a;
+}
+
+.headcount-item .count {
+  font-weight: bold;
+  font-size: 1.1em;
+  color: #333;
+}

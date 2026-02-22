@@ -1,12 +1,12 @@
-Closes #33
+Closes #36
 
 ## Dependencies
 
-- Merge PR #34
+- Merge PR #35
 
 ## What does this PR do?
 
-- Allows Admin to declare a date range as a company-wide “WFH for everyone” period. During this period, employees are treated as WFH by default for reporting and headcount calculations.
+- Enhances reporting capabilities to provide detailed meal participation headcount breakdowns for better planning and logistics.
 
 ## Type of Change
 
@@ -14,23 +14,18 @@ Closes #33
 
 ## What was changed
 
-- **Admin**
-  - Can define a start date and end date for a WFH period.
-  - Can update or remove an existing WFH period.
+- Headcount totals available by:
+  - **Meal type**
+  - **Team**
+  - **Overall total**
+  - **Office vs WFH split**
 
-- **System Behavior**
-  - During the declared period:
-    - Employees are treated as WFH by default.
-    - Headcount reporting reflects all users as WFH unless explicitly overridden (if allowed).
-    - Meals are opted out
-  - Outside the declared period:
-    - Normal work-location rules apply.
-
+- Accessible to:
+  - **Admin**
 
 ## Changelog
 
-
-Feature: Company-wide WFH period
+- Feature: Improved Headcount Reporting
 
 
 
@@ -41,13 +36,12 @@ Feature: Company-wide WFH period
 
 ## How QA Should Test
 
-- Create a WFH period
-- Check employee meal and work status
+- Log in as admin.
+- Check headcount totals by different tags.
 
 ## Rollback Plan
 
 - Revert this PR
-
 
 ## Checklist
 
@@ -56,4 +50,4 @@ Feature: Company-wide WFH period
 
 ## Note for Reviewer
 
-- Frontend has been implemented.
+- Frontend has been implemented
