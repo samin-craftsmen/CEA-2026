@@ -76,6 +76,50 @@ const [adminMemberLoading, setAdminMemberLoading] = useState(false);
 const [adminMemberMessage, setAdminMemberMessage] = useState("");
 const [adminMemberLoadedText, setAdminMemberLoadedText] = useState("");
 
+// ================= ADMIN ANNOUNCEMENT ================= //
+const [announcementDate, setAnnouncementDate] = useState("");
+const [announcementMsg, setAnnouncementMsg] = useState("");
+
+const fetchAnnouncement = async () => {
+  if (!announcementDate) return alert("Select a date");
+
+  const res = await fetch(`http://localhost:8080/admin/headcount/summary/${announcementDate}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    return alert(err.error || "Failed to fetch headcount");
+  }
+
+  const data = await res.json();
+  const { total_participants, office, wfh, opted_out, by_meal, day_status, day_note } = data;
+
+  let dayText = "";
+  switch(day_status) {
+    case "office_closed": dayText = "🏢 Office Closed"; break;
+    case "government_holiday": dayText = "🎉 Government Holiday"; break;
+    case "special_celebration": dayText = `🎊 Special Celebration${day_note ? `: ${day_note}` : ""}`; break;
+    default: dayText = "Normal Day"; break;
+  }
+
+  let msg = `📅 Announcement for ${announcementDate}\n`;
+  msg += `Status: ${dayText}\n`;
+  msg += `Total Participants: ${total_participants} (Office: ${office}, WFH: ${wfh}, Opted Out: ${opted_out})\n\n`;
+  msg += `🍽️ Meals Summary:\n`;
+
+  for (const meal of Object.keys(by_meal)) {
+    msg += `- ${meal}: ${by_meal[meal]}\n`;
+  }
+
+  setAnnouncementMsg(msg);
+};
+
+const copyAnnouncement = () => {
+  navigator.clipboard.writeText(announcementMsg);
+  alert("Announcement copied to clipboard!");
+};
+
 const fetchAdminWorkLocation = async (date: string) => {
   if (!date) return;
   
@@ -1438,6 +1482,34 @@ const updateAdminMemberWorkLocation = async () => {
     )}
   </div>
 )}
+<div className="section">
+  <h3>Generate Announcement</h3>
+
+  <input
+    type="date"
+    className="input"
+    value={announcementDate}
+    onChange={e => setAnnouncementDate(e.target.value)}
+  />
+
+  <button className="btn primary" onClick={fetchAnnouncement} style={{ marginTop: "10px" }}>
+    Generate Announcement
+  </button>
+
+  {announcementMsg && (
+    <div style={{ marginTop: "15px" }}>
+      <textarea
+        className="input"
+        value={announcementMsg}
+        readOnly
+        rows={10}
+      />
+      <button className="btn secondary" onClick={copyAnnouncement} style={{ marginTop: "10px" }}>
+        Copy to Clipboard
+      </button>
+    </div>
+  )}
+</div>
 
         <button className="btn danger logout" onClick={logout}>
           Logout

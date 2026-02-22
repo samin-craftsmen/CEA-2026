@@ -1,13 +1,13 @@
-<!-- Link to the issue this PR addresses -->
-Closes #30
+Closes #32
 
 ## Dependencies
 
-- Merge PR #29
+- Merge PR #31
 
 ## What does this PR do?
 
 - Allows employees to specify their work location for a selected date and enables team leads/admins to manage or correct entries when necessary
+
 ## Type of Change
 
 - [x] New feature

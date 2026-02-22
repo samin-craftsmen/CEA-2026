@@ -901,6 +901,18 @@ func HeadcountSummary(c *gin.Context) {
 	participation, _ := utils.LoadParticipation()
 	workLocations, _ := utils.LoadWorkLocations()
 	users, _ := utils.LoadUsers()
+	dayControls, _ := utils.LoadDayControls() // Load day controls
+
+	// Determine day status
+	dayStatus := "normal_day"
+	var dayNote *string
+	for _, d := range dayControls {
+		if d.Date == date {
+			dayStatus = d.Type
+			dayNote = d.Note
+			break
+		}
+	}
 
 	totalParticipants := 0
 	officeCount := 0
@@ -957,11 +969,17 @@ func HeadcountSummary(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	resp := gin.H{
 		"total_participants": totalParticipants,
 		"office":             officeCount,
 		"wfh":                wfhCount,
 		"opted_out":          optedOut,
 		"by_meal":            mealCount,
-	})
+		"day_status":         dayStatus,
+	}
+	if dayNote != nil {
+		resp["day_note"] = *dayNote
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
