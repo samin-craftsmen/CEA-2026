@@ -477,7 +477,7 @@ func UpdateWorkLocationByAdmin(c *gin.Context) {
 		return
 	}
 
-	// 🔍 Optional: Verify user exists
+	// Verify user exists
 	users, err := utils.LoadUsers()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -579,6 +579,28 @@ func UpdateWorkLocationByAdmin(c *gin.Context) {
 			})
 			return
 		}
+	} else if req.Location == "Office" {
+		// opt back in: remove the null override for that date
+		participationData, err := utils.LoadParticipation()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load participation"})
+			return
+		}
+
+		newParticipation := []models.Participation{}
+		for _, p := range participationData {
+			if p.Username == req.Username && p.Date == req.Date {
+				// Remove override (restore default by not including Meals=nil)
+				continue
+			}
+			newParticipation = append(newParticipation, p)
+		}
+
+		err = utils.SaveParticipation(newParticipation)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save participation"})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -587,71 +609,49 @@ func UpdateWorkLocationByAdmin(c *gin.Context) {
 }
 
 func GetWorkLocationByAdmin(c *gin.Context) {
-
-	// 🔐 Role check
 	role := c.GetString("role")
-
 	if role != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Only admin can access this",
-		})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Only admin can access this"})
 		return
 	}
 
-	var req struct {
-		Username string `json:"username"`
-		Date     string `json:"date"`
-	}
+	username := c.Query("username")
+	date := c.Query("date")
 
-	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid input",
-		})
+	if username == "" || date == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username and date are required"})
 		return
 	}
 
-	if req.Username == "" || req.Date == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "username and date are required",
-		})
-		return
-	}
-
-	// 🔍 Optional: verify user exists
+	//  Optional: verify user exists
 	users, err := utils.LoadUsers()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to load users",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load users"})
 		return
 	}
 
 	userExists := false
 	for _, u := range users {
-		if u.Username == req.Username {
+		if u.Username == username {
 			userExists = true
 			break
 		}
 	}
 
 	if !userExists {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "User not found",
-		})
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
-	// 🔎 Load work locations
+	//  Load work locations
 	workData, err := utils.LoadWorkLocations()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to load work locations",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load work locations"})
 		return
 	}
 
 	for _, w := range workData {
-		if w.Username == req.Username && w.Date == req.Date {
+		if w.Username == username && w.Date == date {
 			c.JSON(http.StatusOK, w)
 			return
 		}
@@ -659,8 +659,8 @@ func GetWorkLocationByAdmin(c *gin.Context) {
 
 	// Default if not set
 	c.JSON(http.StatusOK, gin.H{
-		"username": req.Username,
-		"date":     req.Date,
+		"username": username,
+		"date":     date,
 		"location": "Office",
 	})
 }

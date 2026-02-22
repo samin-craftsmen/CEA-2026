@@ -1,32 +1,36 @@
-
-Closes #10
+<!-- Link to the issue this PR addresses -->
+Closes #30
 
 ## Dependencies
 
-- Merge PR #27
+- Merge PR #29
 
 ## What does this PR do?
 
-- Allows Admin and Logistics roles to configure special day types that affect meal availability and participation behavior. Implements Only the backend.
-
+- Allows employees to specify their work location for a selected date and enables team leads/admins to manage or correct entries when necessary
 ## Type of Change
 
-- [X] New feature
+- [x] New feature
 
 ## What was changed
 
+- **Employee**
+  - Can set work location per date:
+    - Office
+    - WFH
+  - Can update their own selection before cutoff time (if applicable).
+
+- **Team Lead**
+  - Can view work location of their team members.
+  - Can correct or update missing/incorrect entries within their team.
+
 - **Admin**
-  - Can mark a date as:
-    - Office Closed
-    - Government Holiday
-    - Special Celebration Day (with optional note)
-  - Can update or remove a special day setting.
+  - Can view and modify work location for any user.
+
 
 ## Changelog
 
-Feature: Implemented Special Day Controls
-
-
+- Feature: Work Location Update 
 
 ## How to Test
 
@@ -35,19 +39,20 @@ Feature: Implemented Special Day Controls
 
 ## How QA Should Test
 
-- Choose a date as office closed and check meal participation.
-- Choose government holiday and check only day status change.
-- Choose special day celebration and see special day message
+- As an employee change your work location and check status
+- As a team lead change the work location of you team member
+- As an admin change the work location of any employee across all teams
 
 ## Rollback Plan
 
 - Revert this PR
 
-
 ## Checklist
 
-- [x] Features work as expected
+- [x] All reqirements have been met
 - [x] All tests pass
+
+
 ## Note for Reviewer
 
 - Frontend has been implemented

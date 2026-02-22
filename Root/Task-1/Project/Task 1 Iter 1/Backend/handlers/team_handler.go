@@ -280,15 +280,11 @@ func TeamBulkOptIn(c *gin.Context) {
 }
 
 func UpdateTeamMemberWorkLocation(c *gin.Context) {
-
-	// 🔐 Role check
 	role := c.GetString("role")
 	leadTeam := c.GetString("team")
 
 	if role != "teamLead" {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Only team leads can modify team work locations",
-		})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Only team leads can modify team work locations"})
 		return
 	}
 
@@ -299,32 +295,23 @@ func UpdateTeamMemberWorkLocation(c *gin.Context) {
 	}
 
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid input",
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
 	if req.Username == "" || req.Date == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "username and date are required",
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username and date are required"})
 		return
 	}
 
 	if req.Location != "Office" && req.Location != "WFH" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid work location",
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid work location"})
 		return
 	}
 
-	// 🔍 Verify user belongs to team lead's team
 	users, err := utils.LoadUsers()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to load users",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load users"})
 		return
 	}
 
@@ -337,19 +324,14 @@ func UpdateTeamMemberWorkLocation(c *gin.Context) {
 	}
 
 	if !validMember {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": "You can only modify members of your own team",
-		})
+		c.JSON(http.StatusForbidden, gin.H{"error": "You can only modify members of your own team"})
 		return
 	}
 
-	// ------------------ Update Work Location ------------------
-
+	// Update work location
 	workData, err := utils.LoadWorkLocations()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to load work locations",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load work locations"})
 		return
 	}
 
@@ -372,62 +354,71 @@ func UpdateTeamMemberWorkLocation(c *gin.Context) {
 
 	err = utils.SaveWorkLocations(workData)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to save work location",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save work location"})
 		return
 	}
 
-	// ------------------ If WFH → Opt Out Meals ------------------
+	// Handle meals
+	participationData, err := utils.LoadParticipation()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load participation"})
+		return
+	}
 
-	if req.Location == "WFH" {
+	defaultMeals := []string{"Lunch", "Snacks", "Iftar", "Event Dinner", "Optional Dinner"}
+	mealTypes := []models.MealType{}
+	for _, m := range defaultMeals {
+		mealTypes = append(mealTypes, models.MealType(m))
+	}
 
-		participationData, err := utils.LoadParticipation()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to load participation",
-			})
-			return
-		}
+	newParticipation := []models.Participation{}
+	found := false
 
-		newParticipation := []models.Participation{}
-		found := false
-
-		for _, p := range participationData {
-			if p.Username == req.Username && p.Date == req.Date {
+	for _, p := range participationData {
+		if p.Username == req.Username && p.Date == req.Date {
+			found = true
+			if req.Location == "WFH" {
 				newParticipation = append(newParticipation, models.Participation{
 					Username: req.Username,
 					Date:     req.Date,
 					Meals:    nil,
 				})
-				found = true
 			} else {
-				newParticipation = append(newParticipation, p)
+				newParticipation = append(newParticipation, models.Participation{
+					Username: req.Username,
+					Date:     req.Date,
+					Meals:    mealTypes,
+				})
 			}
+		} else {
+			newParticipation = append(newParticipation, p)
 		}
+	}
 
-		if !found {
+	if !found {
+		if req.Location == "WFH" {
 			newParticipation = append(newParticipation, models.Participation{
 				Username: req.Username,
 				Date:     req.Date,
 				Meals:    nil,
 			})
-		}
-
-		err = utils.SaveParticipation(newParticipation)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to save participation",
+		} else {
+			newParticipation = append(newParticipation, models.Participation{
+				Username: req.Username,
+				Date:     req.Date,
+				Meals:    mealTypes,
 			})
-			return
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Work location updated successfully",
-	})
-}
+	err = utils.SaveParticipation(newParticipation)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save participation"})
+		return
+	}
 
+	c.JSON(http.StatusOK, gin.H{"message": "Work location and meals updated successfully"})
+}
 func GetTeamMemberWorkLocation(c *gin.Context) {
 
 	// 🔐 Role check
