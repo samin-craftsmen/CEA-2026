@@ -853,21 +853,57 @@ const updateAdminMemberWorkLocation = async () => {
   };
 
   // ================= HEADCOUNT =================
+
+  const [headcountByTeam, setHeadcountByTeam] = useState<any>(null);
+  const [headcountByLocation, setHeadcountByLocation] = useState<any>(null);
+  const [headcountLoading, setHeadcountLoading] = useState(false);
+
+
+  // ================= HEADCOUNT =================
+    // ================= HEADCOUNT =================
   const fetchHeadcount = async () => {
     if (!searchDate) {
       alert("Select a date first");
       return;
     }
 
-    const res = await fetch(
-      `http://localhost:8080/meals/headcount/${searchDate}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    setHeadcountLoading(true);
 
-    const data = await res.json();
-    setHeadcount(data);
+    try {
+      // Fetch by meal type
+      const res1 = await fetch(
+        `http://localhost:8080/meals/headcount/${searchDate}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const data1 = await res1.json();
+      setHeadcount(data1);
+
+      // Fetch by team
+      const res2 = await fetch(
+        `http://localhost:8080/admin/headcount/teams/${searchDate}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const data2 = await res2.json();
+      setHeadcountByTeam(data2);
+
+      // Fetch by location (only office vs WFH totals per date)
+      const res3 = await fetch(
+        `http://localhost:8080/admin/headcount/location/${searchDate}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const data3 = await res3.json();
+      setHeadcountByLocation(data3);
+    } catch (error) {
+      alert("Failed to fetch headcount data");
+    } finally {
+      setHeadcountLoading(false);
+    }
   };
 
   const logout = () => {
@@ -1045,10 +1081,11 @@ const updateAdminMemberWorkLocation = async () => {
           </div>
         )}
 
-        {/* ================= HEADCOUNT ================= */}
+                {/* ================= HEADCOUNT ================= */}
+                {/* ================= HEADCOUNT ================= */}
         {role === "admin" && (
           <div className="section">
-            <h3>Headcount</h3>
+            <h3>📊 Headcount Report</h3>
 
             <input
               className="input"
@@ -1057,19 +1094,70 @@ const updateAdminMemberWorkLocation = async () => {
               onChange={e => setSearchDate(e.target.value)}
             />
 
-            <button className="btn primary" onClick={fetchHeadcount}>
-              Get Headcount
+            <button 
+              className="btn primary" 
+              onClick={fetchHeadcount}
+              disabled={headcountLoading}
+            >
+              {headcountLoading ? "Loading..." : "Get Headcount"}
             </button>
 
             {headcount && (
-              <div className="headcount">
-                {Object.entries(headcount).map(([meal, count]) => (
-                  <div key={meal} className="headcount-item">
-                    <span>{meal}</span>
-                    <span>{String(count)}</span>
+              <>
+                {/* By Meal Type */}
+                <div style={{ marginTop: "20px" }}>
+                  <h4> By Meal Type</h4>
+                  <div className="headcount">
+                    {Object.entries(headcount).map(([meal, count]) => (
+                      <div key={meal} className="headcount-item">
+                        <span>{meal}</span>
+                        <span className="count">{String(count)}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+
+                {/* By Team */}
+                {headcountByTeam && Object.keys(headcountByTeam).length > 0 && (
+                  <div style={{ marginTop: "20px" }}>
+                    <h4> By Team</h4>
+                    {Object.entries(headcountByTeam).map(([team, meals]: any) => (
+                      <div key={team} className="team-headcount">
+                        <strong>{team}</strong>
+                        <div style={{ marginLeft: "15px", marginTop: "8px" }}>
+                          {Object.entries(meals).map(([meal, count]) => (
+                            <div key={meal} className="headcount-item" style={{ fontSize: "0.9em" }}>
+                              <span>{meal}</span>
+                              <span className="count">{String(count)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Overall Office vs WFH */}
+                {headcountByLocation && (
+                  <div style={{ marginTop: "20px" }}>
+                    <h4> Office vs WFH (Overall)</h4>
+                    <div style={{ display: "flex", gap: "30px", alignItems: "center" }}>
+                      <div>
+                        <span style={{ color: "#007bff", fontSize: "1.1em" }}>🏢 Office: </span>
+                        <span className="count" style={{ fontSize: "1.3em" }}>
+                          {headcountByLocation.office || 0}
+                        </span>
+                      </div>
+                      <div>
+                        <span style={{ color: "#28a745", fontSize: "1.1em" }}>🏠 WFH: </span>
+                        <span className="count" style={{ fontSize: "1.3em" }}>
+                          {headcountByLocation.wfh || 0}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
