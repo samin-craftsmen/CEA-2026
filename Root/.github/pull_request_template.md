@@ -1,12 +1,12 @@
-Closes #32
+Closes #33
 
 ## Dependencies
 
-- Merge PR #31
+- Merge PR #34
 
 ## What does this PR do?
 
-- Allows employees to specify their work location for a selected date and enables team leads/admins to manage or correct entries when necessary
+- Allows Admin to declare a date range as a company-wide “WFH for everyone” period. During this period, employees are treated as WFH by default for reporting and headcount calculations.
 
 ## Type of Change
 
@@ -14,23 +14,25 @@ Closes #32
 
 ## What was changed
 
-- **Employee**
-  - Can set work location per date:
-    - Office
-    - WFH
-  - Can update their own selection before cutoff time (if applicable).
-
-- **Team Lead**
-  - Can view work location of their team members.
-  - Can correct or update missing/incorrect entries within their team.
-
 - **Admin**
-  - Can view and modify work location for any user.
+  - Can define a start date and end date for a WFH period.
+  - Can update or remove an existing WFH period.
+
+- **System Behavior**
+  - During the declared period:
+    - Employees are treated as WFH by default.
+    - Headcount reporting reflects all users as WFH unless explicitly overridden (if allowed).
+    - Meals are opted out
+  - Outside the declared period:
+    - Normal work-location rules apply.
 
 
 ## Changelog
 
-- Feature: Work Location Update 
+
+Feature: Company-wide WFH period
+
+
 
 ## How to Test
 
@@ -39,20 +41,19 @@ Closes #32
 
 ## How QA Should Test
 
-- As an employee change your work location and check status
-- As a team lead change the work location of you team member
-- As an admin change the work location of any employee across all teams
+- Create a WFH period
+- Check employee meal and work status
 
 ## Rollback Plan
 
 - Revert this PR
 
+
 ## Checklist
 
-- [x] All reqirements have been met
+- [x] All requirements have been met
 - [x] All tests pass
-
 
 ## Note for Reviewer
 
-- Frontend has been implemented
+- Frontend has been implemented.

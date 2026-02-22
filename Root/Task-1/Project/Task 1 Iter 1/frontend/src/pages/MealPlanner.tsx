@@ -49,6 +49,48 @@ export default function MealPlanner() {
   const [specialNote, setSpecialNote] = useState("");
   const [currentDayStatus, setCurrentDayStatus] = useState<any>(null);
 
+  // ================= COMPANY-WIDE WFH =================
+const [companyWFHStart, setCompanyWFHStart] = useState("");
+const [companyWFHEnd, setCompanyWFHEnd] = useState("");
+const [companyWFHNote, setCompanyWFHNote] = useState("");
+const [companyWFHLoading, setCompanyWFHLoading] = useState(false);
+const [companyWFHMessage, setCompanyWFHMessage] = useState("");
+
+const applyCompanyWFH = async () => {
+  if (!companyWFHStart || !companyWFHEnd) {
+    alert("Select start and end date");
+    return;
+  }
+
+  setCompanyWFHLoading(true);
+  setCompanyWFHMessage("");
+
+  const res = await fetch("http://localhost:8080/admin/company-wfh", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      start_date: companyWFHStart,
+      end_date: companyWFHEnd,
+      note: companyWFHNote ? companyWFHNote : null,
+    }),
+  });
+
+  const data = await res.json();
+  setCompanyWFHLoading(false);
+
+  if (!res.ok) {
+    alert(data.error || "Failed to apply company WFH");
+    return;
+  }
+
+  setCompanyWFHMessage(
+    `Company-wide WFH applied for ${data.days_affected} days`
+  );
+};
+
   // ================= TEAM LEAD WORK LOCATION =================
   const [leadWorkDate, setLeadWorkDate] = useState("");
   const [leadWorkLocation, setLeadWorkLocation] = useState<"Office" | "WFH">("Office");
@@ -1510,6 +1552,50 @@ const updateAdminMemberWorkLocation = async () => {
     </div>
   )}
 </div>
+{/* ================= COMPANY-WIDE WFH PERIOD ================= */}
+{role === "admin" && (
+  <div className="section">
+    <h3>Company-wide WFH Period</h3>
+
+    <input
+      type="date"
+      className="input"
+      value={companyWFHStart}
+      onChange={e => setCompanyWFHStart(e.target.value)}
+    />
+
+    <input
+      type="date"
+      className="input"
+      value={companyWFHEnd}
+      onChange={e => setCompanyWFHEnd(e.target.value)}
+      style={{ marginTop: "10px" }}
+    />
+
+    <input
+      className="input"
+      placeholder="Optional note"
+      value={companyWFHNote}
+      onChange={e => setCompanyWFHNote(e.target.value)}
+      style={{ marginTop: "10px" }}
+    />
+
+    <button
+      className="btn primary"
+      style={{ marginTop: "12px" }}
+      onClick={applyCompanyWFH}
+      disabled={companyWFHLoading}
+    >
+      {companyWFHLoading ? "Applying..." : "Apply Company WFH"}
+    </button>
+
+    {companyWFHMessage && (
+      <p style={{ marginTop: "10px", color: "green" }}>
+        {companyWFHMessage}
+      </p>
+    )}
+  </div>
+)}
 
         <button className="btn danger logout" onClick={logout}>
           Logout

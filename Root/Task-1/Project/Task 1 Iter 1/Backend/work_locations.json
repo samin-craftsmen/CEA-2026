@@ -7,12 +7,12 @@
   {
     "username": "employee101",
     "date": "2026-02-25",
-    "location": "Office"
+    "location": "WFH"
   },
   {
     "username": "employee101",
     "date": "2026-02-26",
-    "location": "Office"
+    "location": "WFH"
   },
   {
     "username": "teamLead101",
@@ -22,16 +22,111 @@
   {
     "username": "employee101",
     "date": "2026-02-28",
-    "location": "Office"
+    "location": "WFH"
   },
   {
     "username": "employee101",
     "date": "2026-02-27",
-    "location": "Office"
+    "location": "WFH"
   },
   {
     "username": "employee101",
     "date": "2026-02-24",
+    "location": "WFH"
+  },
+  {
+    "username": "admin1",
+    "date": "2026-02-24",
+    "location": "WFH"
+  },
+  {
+    "username": "teamLead101",
+    "date": "2026-02-24",
+    "location": "WFH"
+  },
+  {
+    "username": "employee102",
+    "date": "2026-02-24",
+    "location": "WFH"
+  },
+  {
+    "username": "employee201",
+    "date": "2026-02-24",
+    "location": "WFH"
+  },
+  {
+    "username": "admin1",
+    "date": "2026-02-25",
+    "location": "WFH"
+  },
+  {
+    "username": "teamLead101",
+    "date": "2026-02-25",
+    "location": "WFH"
+  },
+  {
+    "username": "employee102",
+    "date": "2026-02-25",
+    "location": "WFH"
+  },
+  {
+    "username": "employee201",
+    "date": "2026-02-25",
+    "location": "WFH"
+  },
+  {
+    "username": "admin1",
+    "date": "2026-02-26",
+    "location": "WFH"
+  },
+  {
+    "username": "teamLead101",
+    "date": "2026-02-26",
+    "location": "WFH"
+  },
+  {
+    "username": "employee102",
+    "date": "2026-02-26",
+    "location": "WFH"
+  },
+  {
+    "username": "employee201",
+    "date": "2026-02-26",
+    "location": "WFH"
+  },
+  {
+    "username": "admin1",
+    "date": "2026-02-27",
+    "location": "WFH"
+  },
+  {
+    "username": "teamLead101",
+    "date": "2026-02-27",
+    "location": "WFH"
+  },
+  {
+    "username": "employee102",
+    "date": "2026-02-27",
+    "location": "WFH"
+  },
+  {
+    "username": "employee201",
+    "date": "2026-02-27",
+    "location": "WFH"
+  },
+  {
+    "username": "admin1",
+    "date": "2026-02-28",
+    "location": "WFH"
+  },
+  {
+    "username": "employee102",
+    "date": "2026-02-28",
+    "location": "WFH"
+  },
+  {
+    "username": "employee201",
+    "date": "2026-02-28",
     "location": "WFH"
   }
 ]
