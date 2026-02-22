@@ -45,82 +45,437 @@ export default function MealPlanner() {
   const [adminBulkLoading, setAdminBulkLoading] = useState(false);
 
   const [specialDate, setSpecialDate] = useState("");
-const [specialType, setSpecialType] = useState("office_closed");
-const [specialNote, setSpecialNote] = useState("");
-const [currentDayStatus, setCurrentDayStatus] = useState<any>(null);
+  const [specialType, setSpecialType] = useState("office_closed");
+  const [specialNote, setSpecialNote] = useState("");
+  const [currentDayStatus, setCurrentDayStatus] = useState<any>(null);
 
-// ========================= Special Day controls =========================//
-const setSpecialDay = async () => {
-  if (!specialDate) {
-    alert("Select a date");
-    return;
+  // ================= TEAM LEAD WORK LOCATION =================
+  const [leadWorkDate, setLeadWorkDate] = useState("");
+  const [leadWorkLocation, setLeadWorkLocation] = useState<"Office" | "WFH">("Office");
+  const [leadWorkLoading, setLeadWorkLoading] = useState(false);
+  const [leadWorkMessage, setLeadWorkMessage] = useState("");
+
+  // Team member view/edit
+  const [memberUsername, setMemberUsername] = useState("");
+  const [memberDate, setMemberDate] = useState("");
+  const [memberLocation, setMemberLocation] = useState<"Office" | "WFH">("Office");
+  const [memberLoading, setMemberLoading] = useState(false);
+  const [memberMessage, setMemberMessage] = useState("");
+  const [memberLoadedText, setMemberLoadedText] = useState("");
+
+  // Admin own & member work location
+const [adminWorkDate, setAdminWorkDate] = useState("");
+const [adminWorkLocation, setAdminWorkLocation] = useState<"Office" | "WFH">("Office");
+const [adminWorkLoading, setAdminWorkLoading] = useState(false);
+const [adminWorkMessage, setAdminWorkMessage] = useState("");
+
+const [adminMemberUsername, setAdminMemberUsername] = useState("");
+const [adminMemberDate, setAdminMemberDate] = useState("");
+const [adminMemberLocation, setAdminMemberLocation] = useState<"Office" | "WFH">("Office");
+const [adminMemberLoading, setAdminMemberLoading] = useState(false);
+const [adminMemberMessage, setAdminMemberMessage] = useState("");
+const [adminMemberLoadedText, setAdminMemberLoadedText] = useState("");
+
+const fetchAdminWorkLocation = async (date: string) => {
+  if (!date) return;
+  
+  const res = await fetch(
+  `http://localhost:8080/admin/work-location?username=${adminMemberUsername}&date=${adminMemberDate}`,
+  {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   }
+);
 
-  const res = await fetch("http://localhost:8080/admin/day-controls", {
+  const data = await res.json();
+  if (res.ok) setAdminWorkLocation(data.location || "Office");
+};
+
+const saveAdminWorkLocation = async () => {
+  if (!adminWorkDate) return alert("Select a date");
+
+  if (isPastCutoff(adminWorkDate)) return alert("Cutoff passed.");
+
+  setAdminWorkLoading(true);
+
+  const res = await fetch("http://localhost:8080/admin/work-location/update", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
-      date: specialDate,
-      type: specialType,
-      note:
-        specialType === "special_celebration" && specialNote
-          ? specialNote
-          : null,
+      username,
+      date: adminWorkDate,
+      location: adminWorkLocation,
     }),
   });
 
   const data = await res.json();
+  setAdminWorkLoading(false);
 
-  if (!res.ok) {
-    alert(data.error || "Failed");
-    return;
-  }
+  if (!res.ok) return alert(data.error || "Failed");
 
-  alert("Special day saved!");
-  fetchDayStatus();
+  setAdminWorkMessage("Your work location updated");
 };
-const fetchDayStatus = async () => {
-  if (!specialDate) return;
 
-  const res = await fetch(
-    `http://localhost:8080/admin/day-controls/${specialDate}`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-    }
-  );
+const fetchAdminMemberWorkLocation = async () => {
+  if (!adminMemberUsername || !adminMemberDate) return alert("Enter username and date");
+
+  setAdminMemberLoading(true);
+  setAdminMemberMessage("");
+  setAdminMemberLoadedText("");
+
+  const res = await fetch(`http://localhost:8080/admin/work-location?username=${adminMemberUsername}&date=${adminMemberDate}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
 
   const data = await res.json();
-  setCurrentDayStatus(data);
-};
-const removeSpecialDay = async () => {
-  if (!specialDate) {
-    alert("Select a date");
-    return;
-  }
+  setAdminMemberLoading(false);
 
-  const res = await fetch(
-    `http://localhost:8080/admin/day-controls/${specialDate}`,
-    {
-      method: "DELETE",
+  if (!res.ok) return alert(data.error || "Failed");
+
+  setAdminMemberLocation(data.location || "Office");
+  setAdminMemberLoadedText(`${adminMemberUsername} is working from ${data.location || "Office"} on ${adminMemberDate}`);
+};
+
+const updateAdminMemberWorkLocation = async () => {
+  if (!adminMemberUsername || !adminMemberDate) return alert("Enter username and date");
+
+  setAdminMemberLoading(true);
+
+  const res = await fetch("http://localhost:8080/admin/work-location/update", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      username: adminMemberUsername,
+      date: adminMemberDate,
+      location: adminMemberLocation,
+    }),
+  });
+
+  const data = await res.json();
+  setAdminMemberLoading(false);
+
+  if (!res.ok) return alert(data.error || "Failed");
+
+  setAdminMemberMessage("Member work location updated");
+};
+
+
+  const _isPastCutoff = (selectedDate: string) => {
+    if (!selectedDate) return true;
+
+    const selected = new Date(selectedDate);
+    const cutoff = new Date(selected);
+    cutoff.setDate(cutoff.getDate() - 1);
+    cutoff.setHours(21, 0, 0, 0); // 9 PM previous day
+
+    return new Date() > cutoff;
+  };
+
+  const fetchLeadWorkLocation = async (date: string) => {
+    if (!date) return;
+
+    const res = await fetch("http://localhost:8080/me/work-location", {
+      method: "GET",
       headers: {
+        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
+      body: JSON.stringify({
+        username,
+        date,
+      }),
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      setLeadWorkLocation(data.location || "Office");
     }
-  );
+  };
 
-  const data = await res.json();
+  const saveLeadWorkLocation = async () => {
+    if (!leadWorkDate) {
+      alert("Select a date");
+      return;
+    }
 
-  if (!res.ok) {
-    alert(data.error || "Failed");
-    return;
-  }
+    if (_isPastCutoff(leadWorkDate)) {
+      alert("Cutoff time passed.");
+      return;
+    }
 
-  alert("Special day removed!");
-  setCurrentDayStatus(null);
-};
+    setLeadWorkLoading(true);
+
+    const res = await fetch("http://localhost:8080/me/work-location", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        username,
+        date: leadWorkDate,
+        location: leadWorkLocation,
+      }),
+    });
+
+    const data = await res.json();
+    setLeadWorkLoading(false);
+
+    if (!res.ok) {
+      alert(data.error || "Failed");
+      return;
+    }
+
+    setLeadWorkMessage("Work location updated");
+  };
+  useEffect(() => {
+    if (role === "teamlead" && leadWorkDate) {
+      fetchLeadWorkLocation(leadWorkDate);
+    }
+  }, [leadWorkDate]);
+
+  const fetchMemberWorkLocation = async () => {
+    if (!memberUsername || !memberDate) {
+      alert("Enter username and date");
+      return;
+    }
+
+    setMemberLoading(true);
+    setMemberMessage("");
+    setMemberLoadedText(""); // clear previous text
+
+    const res = await fetch("http://localhost:8080/teams/work-location", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        username: memberUsername,
+        date: memberDate,
+      }),
+    });
+
+    const data = await res.json();
+    setMemberLoading(false);
+
+    if (!res.ok) {
+      alert(data.error || "Failed");
+      return;
+    }
+
+    const location = data.location || "Office";
+    setMemberLocation(location);
+
+    setMemberLoadedText(
+      `${memberUsername} is working from ${location} on ${memberDate}`
+    );
+  };
+  const updateMemberWorkLocation = async () => {
+    if (!memberUsername || !memberDate) {
+      alert("Enter username and date");
+      return;
+    }
+
+    setMemberLoading(true);
+
+    const res = await fetch(
+      "http://localhost:8080/teams/work-location/update",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          username: memberUsername,
+          date: memberDate,
+          location: memberLocation,
+        }),
+      }
+    );
+
+    const data = await res.json();
+    setMemberLoading(false);
+
+    if (!res.ok) {
+      alert(data.error || "Failed");
+      return;
+    }
+
+    setMemberMessage("Member work location updated");
+  };
+  // ================= WORK LOCATION (EMPLOYEE) =================
+  const [workDate, setWorkDate] = useState("");
+  const [workLocation, setWorkLocation] = useState<"Office" | "WFH">("Office");
+  const [workLoading, setWorkLoading] = useState(false);
+  const [workMessage, setWorkMessage] = useState("");
+
+  const isPastCutoff = (selectedDate: string) => {
+    if (!selectedDate) return true;
+
+    const selected = new Date(selectedDate);
+    const cutoff = new Date(selected);
+    cutoff.setDate(cutoff.getDate() - 1);
+    cutoff.setHours(21, 0, 0, 0); // 9 PM previous day
+
+    return new Date() > cutoff;
+  };
+
+  const fetchWorkLocation = async (date: string) => {
+    if (!date) return;
+
+    const res = await fetch("http://localhost:8080/me/work-location", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        username,
+        date,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      setWorkLocation(data.location || "Office");
+    }
+  };
+
+  const saveWorkLocation = async () => {
+    if (!workDate) {
+      alert("Select a date");
+      return;
+    }
+
+    if (isPastCutoff(workDate)) {
+      alert("Cutoff time passed. You cannot modify this date.");
+      return;
+    }
+
+    setWorkLoading(true);
+
+    const res = await fetch("http://localhost:8080/me/work-location", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        username,
+        date: workDate,
+        location: workLocation,
+      }),
+    });
+
+    const data = await res.json();
+    setWorkLoading(false);
+
+    if (!res.ok) {
+      alert(data.error || "Failed to save");
+      return;
+    }
+
+    setWorkMessage("Work location updated successfully");
+
+    // Optional: if WFH → reload tomorrow meals because backend opts out
+    if (workLocation === "WFH") {
+      setSelectedMeals([]);
+    }
+  };
+
+  useEffect(() => {
+    if (role === "employee" && workDate) {
+      fetchWorkLocation(workDate);
+    }
+  }, [workDate]);
+
+  // ========================= Special Day controls =========================//
+  const setSpecialDay = async () => {
+    if (!specialDate) {
+      alert("Select a date");
+      return;
+    }
+
+    const res = await fetch("http://localhost:8080/admin/day-controls", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        date: specialDate,
+        type: specialType,
+        note:
+          specialType === "special_celebration" && specialNote
+            ? specialNote
+            : null,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Failed");
+      return;
+    }
+
+    alert("Special day saved!");
+    fetchDayStatus();
+  };
+  const fetchDayStatus = async () => {
+    if (!specialDate) return;
+
+    const res = await fetch(
+      `http://localhost:8080/admin/day-controls/${specialDate}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    const data = await res.json();
+    setCurrentDayStatus(data);
+  };
+  const removeSpecialDay = async () => {
+    if (!specialDate) {
+      alert("Select a date");
+      return;
+    }
+
+    const res = await fetch(
+      `http://localhost:8080/admin/day-controls/${specialDate}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Failed");
+      return;
+    }
+
+    alert("Special day removed!");
+    setCurrentDayStatus(null);
+  };
   // ============================= Admin Bulk Ops ==========================//
   const toggleAdminBulkMeal = (meal: string) => {
     if (adminBulkMeals.includes(meal)) {
@@ -724,69 +1079,362 @@ const removeSpecialDay = async () => {
             </div>
           </div>
         )}
-      {/*================== Special Day controls ========================== */}
+        {/*================== Special Day controls ========================== */}
+        {role === "admin" && (
+          <div className="section">
+            <h3>Special Day Controls</h3>
+
+            <input
+              className="input"
+              type="date"
+              value={specialDate}
+              onChange={e => setSpecialDate(e.target.value)}
+            />
+
+            <select
+              className="input"
+              value={specialType}
+              onChange={e => setSpecialType(e.target.value)}
+            >
+              <option value="office_closed">Office Closed</option>
+              <option value="government_holiday">Government Holiday</option>
+              <option value="special_celebration">
+                Special Celebration Day
+              </option>
+            </select>
+
+            {specialType === "special_celebration" && (
+              <input
+                className="input"
+                placeholder="Celebration note"
+                value={specialNote}
+                onChange={e => setSpecialNote(e.target.value)}
+              />
+            )}
+
+            <div style={{ marginTop: "10px" }}>
+              <button className="btn primary" onClick={setSpecialDay}>
+                Save
+              </button>
+
+              <button
+                className="btn secondary"
+                onClick={fetchDayStatus}
+                style={{ marginLeft: "10px" }}
+              >
+                Check Status
+              </button>
+
+              <button
+                className="btn danger"
+                onClick={removeSpecialDay}
+                style={{ marginLeft: "10px" }}
+              >
+                Remove
+              </button>
+            </div>
+
+            {currentDayStatus && (
+              <div style={{ marginTop: "15px" }}>
+                <strong>Current Status:</strong>
+                <p>Type: {currentDayStatus.type}</p>
+                {currentDayStatus.note && (
+                  <p>Note: {currentDayStatus.note}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {role === "employee" && (
+          <div className="section">
+            <h3>Work Location Per Date</h3>
+
+            <input
+              className="input"
+              type="date"
+              value={workDate}
+              onChange={e => {
+                setWorkDate(e.target.value);
+                setWorkMessage("");
+              }}
+            />
+
+            {workDate && (
+              <>
+                <div style={{ marginTop: "10px" }}>
+                  <label className="radio">
+                    <input
+                      type="radio"
+                      value="Office"
+                      checked={workLocation === "Office"}
+                      onChange={() => setWorkLocation("Office")}
+                      disabled={isPastCutoff(workDate)}
+                    />
+                    Office
+                  </label>
+
+                  <label className="radio" style={{ marginLeft: "20px" }}>
+                    <input
+                      type="radio"
+                      value="WFH"
+                      checked={workLocation === "WFH"}
+                      onChange={() => setWorkLocation("WFH")}
+                      disabled={isPastCutoff(workDate)}
+                    />
+                    WFH
+                  </label>
+                </div>
+
+                {isPastCutoff(workDate) && (
+                  <p style={{ color: "red", marginTop: "8px" }}>
+                    Cutoff time (9 PM previous day) has passed.
+                  </p>
+                )}
+
+                <button
+                  className="btn primary"
+                  style={{ marginTop: "12px" }}
+                  onClick={saveWorkLocation}
+                  disabled={isPastCutoff(workDate) || workLoading}
+                >
+                  {workLoading ? "Saving..." : "Save Work Location"}
+                </button>
+
+                {workMessage && (
+                  <p style={{ marginTop: "8px", color: "green" }}>
+                    {workMessage}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        )}
+        {/* Team Lead work location ops */}
+        {role === "teamlead" && (
+          <div className="section">
+            <h3>My Work Location</h3>
+
+            <input
+              className="input"
+              type="date"
+              value={leadWorkDate}
+              onChange={e => {
+                setLeadWorkDate(e.target.value);
+                setLeadWorkMessage("");
+              }}
+            />
+
+            {leadWorkDate && (
+              <>
+                <div style={{ marginTop: "10px" }}>
+                  <label>
+                    <input
+                      type="radio"
+                      checked={leadWorkLocation === "Office"}
+                      onChange={() => setLeadWorkLocation("Office")}
+                      disabled={isPastCutoff(leadWorkDate)}
+                    />
+                    Office
+                  </label>
+
+                  <label style={{ marginLeft: "20px" }}>
+                    <input
+                      type="radio"
+                      checked={leadWorkLocation === "WFH"}
+                      onChange={() => setLeadWorkLocation("WFH")}
+                      disabled={isPastCutoff(leadWorkDate)}
+                    />
+                    WFH
+                  </label>
+                </div>
+
+                {isPastCutoff(leadWorkDate) && (
+                  <p style={{ color: "red" }}>
+                    Cutoff (9 PM previous day) passed.
+                  </p>
+                )}
+
+                <button
+                  className="btn primary"
+                  onClick={saveLeadWorkLocation}
+                  disabled={isPastCutoff(leadWorkDate) || leadWorkLoading}
+                  style={{ marginTop: "10px" }}
+                >
+                  Save
+                </button>
+
+                {leadWorkMessage && (
+                  <p style={{ color: "green" }}>{leadWorkMessage}</p>
+                )}
+              </>
+            )}
+
+            <hr style={{ margin: "25px 0" }} />
+
+            <h3>Team Member Work Location</h3>
+
+            <input
+              className="input"
+              placeholder="Member Username"
+              value={memberUsername}
+              onChange={e => setMemberUsername(e.target.value)}
+            />
+
+            <input
+              className="input"
+              type="date"
+              value={memberDate}
+              onChange={e => setMemberDate(e.target.value)}
+            />
+
+            <button
+              className="btn secondary"
+              onClick={fetchMemberWorkLocation}
+            >
+              Load
+            </button>
+            {memberLoadedText && (
+              <p style={{ marginTop: "10px", color: "blue" }}>{memberLoadedText}</p>
+            )}
+            {memberDate && memberUsername && (
+              <>
+                <div style={{ marginTop: "15px" }}>
+                  <label>
+                    <input
+                      type="radio"
+                      checked={memberLocation === "Office"}
+                      onChange={() => setMemberLocation("Office")}
+                    />
+                    Office
+                  </label>
+
+                  <label style={{ marginLeft: "20px" }}>
+                    <input
+                      type="radio"
+                      checked={memberLocation === "WFH"}
+                      onChange={() => setMemberLocation("WFH")}
+                    />
+                    WFH
+                  </label>
+                </div>
+
+                <button
+                  className="btn warning"
+                  onClick={updateMemberWorkLocation}
+                  disabled={memberLoading}
+                  style={{ marginTop: "10px" }}
+                >
+                  Update Member
+                </button>
+
+                {memberMessage && (
+                  <p style={{ color: "green" }}>{memberMessage}</p>
+                )}
+              </>
+            )}
+          </div>
+        )}
         {role === "admin" && (
   <div className="section">
-    <h3>Special Day Controls</h3>
-
+    <h3>My Work Location</h3>
     <input
-      className="input"
       type="date"
-      value={specialDate}
-      onChange={e => setSpecialDate(e.target.value)}
+      className="input"
+      value={adminWorkDate}
+      onChange={e => {
+        setAdminWorkDate(e.target.value);
+        setAdminWorkMessage("");
+        fetchAdminWorkLocation(e.target.value);
+      }}
     />
 
-    <select
-      className="input"
-      value={specialType}
-      onChange={e => setSpecialType(e.target.value)}
-    >
-      <option value="office_closed">Office Closed</option>
-      <option value="government_holiday">Government Holiday</option>
-      <option value="special_celebration">
-        Special Celebration Day
-      </option>
-    </select>
+    {adminWorkDate && (
+      <>
+        <div style={{ marginTop: "10px" }}>
+          <label>
+            <input
+              type="radio"
+              checked={adminWorkLocation === "Office"}
+              onChange={() => setAdminWorkLocation("Office")}
+              disabled={isPastCutoff(adminWorkDate)}
+            /> Office
+          </label>
+          <label style={{ marginLeft: "20px" }}>
+            <input
+              type="radio"
+              checked={adminWorkLocation === "WFH"}
+              onChange={() => setAdminWorkLocation("WFH")}
+              disabled={isPastCutoff(adminWorkDate)}
+            /> WFH
+          </label>
+        </div>
 
-    {specialType === "special_celebration" && (
-      <input
-        className="input"
-        placeholder="Celebration note"
-        value={specialNote}
-        onChange={e => setSpecialNote(e.target.value)}
-      />
+        <button
+          className="btn primary"
+          style={{ marginTop: "10px" }}
+          onClick={saveAdminWorkLocation}
+          disabled={isPastCutoff(adminWorkDate) || adminWorkLoading}
+        >
+          {adminWorkLoading ? "Saving..." : "Save"}
+        </button>
+
+        {adminWorkMessage && <p style={{ color: "green" }}>{adminWorkMessage}</p>}
+      </>
     )}
 
-    <div style={{ marginTop: "10px" }}>
-      <button className="btn primary" onClick={setSpecialDay}>
-        Save
-      </button>
+    <hr style={{ margin: "25px 0" }} />
 
-      <button
-        className="btn secondary"
-        onClick={fetchDayStatus}
-        style={{ marginLeft: "10px" }}
-      >
-        Check Status
-      </button>
+    <h3>Member Work Location</h3>
+    <input
+      placeholder="Member Username"
+      className="input"
+      value={adminMemberUsername}
+      onChange={e => setAdminMemberUsername(e.target.value)}
+    />
+    <input
+      type="date"
+      className="input"
+      value={adminMemberDate}
+      onChange={e => setAdminMemberDate(e.target.value)}
+    />
 
-      <button
-        className="btn danger"
-        onClick={removeSpecialDay}
-        style={{ marginLeft: "10px" }}
-      >
-        Remove
-      </button>
-    </div>
+    <button className="btn secondary" onClick={fetchAdminMemberWorkLocation}>
+      Load
+    </button>
 
-    {currentDayStatus && (
-      <div style={{ marginTop: "15px" }}>
-        <strong>Current Status:</strong>
-        <p>Type: {currentDayStatus.type}</p>
-        {currentDayStatus.note && (
-          <p>Note: {currentDayStatus.note}</p>
-        )}
-      </div>
+    {adminMemberLoadedText && <p style={{ marginTop: "10px", color: "blue" }}>{adminMemberLoadedText}</p>}
+
+    {adminMemberDate && adminMemberUsername && (
+      <>
+        <div style={{ marginTop: "15px" }}>
+          <label>
+            <input
+              type="radio"
+              checked={adminMemberLocation === "Office"}
+              onChange={() => setAdminMemberLocation("Office")}
+            /> Office
+          </label>
+          <label style={{ marginLeft: "20px" }}>
+            <input
+              type="radio"
+              checked={adminMemberLocation === "WFH"}
+              onChange={() => setAdminMemberLocation("WFH")}
+            /> WFH
+          </label>
+        </div>
+
+        <button
+          className="btn warning"
+          onClick={updateAdminMemberWorkLocation}
+          disabled={adminMemberLoading}
+          style={{ marginTop: "10px" }}
+        >
+          Update Member
+        </button>
+
+        {adminMemberMessage && <p style={{ color: "green" }}>{adminMemberMessage}</p>}
+      </>
     )}
   </div>
 )}

@@ -110,6 +110,36 @@ func SetWorkLocation(c *gin.Context) {
 		}
 	}
 
+	// ------------------ If Office → Opt In Meals (Default) ------------------
+
+	if req.Location == "Office" {
+
+		participationData, err := utils.LoadParticipation()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load participation"})
+			return
+		}
+
+		newParticipation := make([]models.Participation, 0, len(participationData))
+		updated := false
+
+		for _, p := range participationData {
+			if p.Username == req.Username && p.Date == req.Date {
+				updated = true
+				continue
+			}
+			newParticipation = append(newParticipation, p)
+		}
+
+		if updated {
+			err = utils.SaveParticipation(newParticipation)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save participation"})
+				return
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Work location set successfully"})
 }
 

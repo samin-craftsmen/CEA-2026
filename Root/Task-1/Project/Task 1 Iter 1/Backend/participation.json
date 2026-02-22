@@ -150,5 +150,36 @@
     "meals": [
       "Snacks"
     ]
+  },
+  {
+    "username": "employee101",
+    "date": "2026-02-26",
+    "meals": null
+  },
+  {
+    "username": "teamLead101",
+    "date": "2026-02-28",
+    "meals": null
+  },
+  {
+    "username": "employee101",
+    "date": "2026-02-28",
+    "meals": [
+      "Lunch",
+      "Snacks",
+      "Iftar",
+      "Event Dinner",
+      "Optional Dinner"
+    ]
+  },
+  {
+    "username": "employee101",
+    "date": "2026-02-27",
+    "meals": null
+  },
+  {
+    "username": "employee101",
+    "date": "2026-02-24",
+    "meals": null
   }
 ]
