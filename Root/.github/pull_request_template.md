@@ -1,32 +1,58 @@
-# Description
+Closes #32
 
-Implemented the Iteration 1 features according to the requirements.
+## Dependencies
 
-Fixes #2 
+- Merge PR #31
 
----
+## What does this PR do?
+
+- Allows employees to specify their work location for a selected date and enables team leads/admins to manage or correct entries when necessary
 
 ## Type of Change
 
-- Implementation of features
+- [x] New feature
 
----
+## What was changed
 
-## What’s Changed
+- **Employee**
+  - Can set work location per date:
+    - Office
+    - WFH
+  - Can update their own selection before cutoff time (if applicable).
 
-- Implemented features of iteration 1 according to the requirement
+- **Team Lead**
+  - Can view work location of their team members.
+  - Can correct or update missing/incorrect entries within their team.
 
----
+- **Admin**
+  - Can view and modify work location for any user.
 
-## How Has This Been Tested?
 
-- Manual testing
+## Changelog
 
+- Feature: Work Location Update 
+
+## How to Test
+
+1. Manual Testing
+2. Integration Testing
+
+## How QA Should Test
+
+- As an employee change your work location and check status
+- As a team lead change the work location of you team member
+- As an admin change the work location of any employee across all teams
+
+## Rollback Plan
+
+- Revert this PR
 
 ## Checklist
 
-- [ ] User can log in and has access to pages/features based on their roles
-- [ ] Admin and team lead can modify team members meals
-- [ ] Admin can see meal headcount for a specific day
-- [ ] Meals are opted in by default
-- [ ] Admin can add meal items which are visible for others
+- [x] All reqirements have been met
+- [x] All tests pass
+
+
+## Note for Reviewer
+
+- Frontend has been implemented

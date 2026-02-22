@@ -1,0 +1,37 @@
+[
+  {
+    "username": "employee101",
+    "date": "2026-02-20",
+    "location": "Office"
+  },
+  {
+    "username": "employee101",
+    "date": "2026-02-25",
+    "location": "Office"
+  },
+  {
+    "username": "employee101",
+    "date": "2026-02-26",
+    "location": "Office"
+  },
+  {
+    "username": "teamLead101",
+    "date": "2026-02-28",
+    "location": "WFH"
+  },
+  {
+    "username": "employee101",
+    "date": "2026-02-28",
+    "location": "Office"
+  },
+  {
+    "username": "employee101",
+    "date": "2026-02-27",
+    "location": "Office"
+  },
+  {
+    "username": "employee101",
+    "date": "2026-02-24",
+    "location": "WFH"
+  }
+]
