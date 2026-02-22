@@ -164,13 +164,7 @@
   {
     "username": "employee101",
     "date": "2026-02-28",
-    "meals": [
-      "Lunch",
-      "Snacks",
-      "Iftar",
-      "Event Dinner",
-      "Optional Dinner"
-    ]
+    "meals": null
   },
   {
     "username": "employee101",
@@ -180,6 +174,106 @@
   {
     "username": "employee101",
     "date": "2026-02-24",
+    "meals": null
+  },
+  {
+    "username": "admin1",
+    "date": "2026-02-24",
+    "meals": null
+  },
+  {
+    "username": "teamLead101",
+    "date": "2026-02-24",
+    "meals": null
+  },
+  {
+    "username": "employee102",
+    "date": "2026-02-24",
+    "meals": null
+  },
+  {
+    "username": "employee201",
+    "date": "2026-02-24",
+    "meals": null
+  },
+  {
+    "username": "admin1",
+    "date": "2026-02-25",
+    "meals": null
+  },
+  {
+    "username": "teamLead101",
+    "date": "2026-02-25",
+    "meals": null
+  },
+  {
+    "username": "employee101",
+    "date": "2026-02-25",
+    "meals": null
+  },
+  {
+    "username": "employee102",
+    "date": "2026-02-25",
+    "meals": null
+  },
+  {
+    "username": "employee201",
+    "date": "2026-02-25",
+    "meals": null
+  },
+  {
+    "username": "admin1",
+    "date": "2026-02-26",
+    "meals": null
+  },
+  {
+    "username": "teamLead101",
+    "date": "2026-02-26",
+    "meals": null
+  },
+  {
+    "username": "employee102",
+    "date": "2026-02-26",
+    "meals": null
+  },
+  {
+    "username": "employee201",
+    "date": "2026-02-26",
+    "meals": null
+  },
+  {
+    "username": "admin1",
+    "date": "2026-02-27",
+    "meals": null
+  },
+  {
+    "username": "teamLead101",
+    "date": "2026-02-27",
+    "meals": null
+  },
+  {
+    "username": "employee102",
+    "date": "2026-02-27",
+    "meals": null
+  },
+  {
+    "username": "employee201",
+    "date": "2026-02-27",
+    "meals": null
+  },
+  {
+    "username": "admin1",
+    "date": "2026-02-28",
+    "meals": null
+  },
+  {
+    "username": "employee102",
+    "date": "2026-02-28",
+    "meals": null
+  },
+  {
+    "username": "employee201",
+    "date": "2026-02-28",
     "meals": null
   }
 ]

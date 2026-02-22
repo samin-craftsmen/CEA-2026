@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -898,7 +900,19 @@ func HeadcountSummary(c *gin.Context) {
 	}
 
 	date := c.Param("date")
-	participation, _ := utils.LoadParticipation()
+
+	// --- Load Participation locally using a local struct ---
+	type LocalParticipation struct {
+		Username string   `json:"username"`
+		Date     string   `json:"date"`
+		Meals    []string `json:"meals"`
+	}
+
+	participationFile, _ := os.ReadFile("participation.json")
+	var participation []LocalParticipation
+	json.Unmarshal(participationFile, &participation)
+
+	// --- Load other required data ---
 	workLocations, _ := utils.LoadWorkLocations()
 	users, _ := utils.LoadUsers()
 	dayControls, _ := utils.LoadDayControls() // Load day controls
@@ -906,10 +920,14 @@ func HeadcountSummary(c *gin.Context) {
 	// Determine day status
 	dayStatus := "normal_day"
 	var dayNote *string
+	isCompanyWideWFH := false
 	for _, d := range dayControls {
 		if d.Date == date {
 			dayStatus = d.Type
 			dayNote = d.Note
+			if d.Type == "COMPANY_WFH" {
+				isCompanyWideWFH = true
+			}
 			break
 		}
 	}
@@ -928,13 +946,18 @@ func HeadcountSummary(c *gin.Context) {
 	}
 
 	for _, user := range users {
-		// Get work location
+		// Get work location (default Office)
 		location := "Office"
 		for _, wl := range workLocations {
 			if wl.Username == user.Username && wl.Date == date {
 				location = wl.Location
 				break
 			}
+		}
+
+		// Override if company-wide WFH
+		if isCompanyWideWFH {
+			location = "WFH"
 		}
 
 		// Find participation for this user on this date
@@ -952,7 +975,7 @@ func HeadcountSummary(c *gin.Context) {
 						officeCount++
 					}
 					for _, meal := range p.Meals {
-						mealCount[string(meal)]++
+						mealCount[meal]++
 					}
 				}
 				break
@@ -962,7 +985,11 @@ func HeadcountSummary(c *gin.Context) {
 		if !hasParticipation {
 			// No participation record = default Office, opted in
 			totalParticipants++
-			officeCount++
+			if location == "WFH" {
+				wfhCount++
+			} else {
+				officeCount++
+			}
 			for meal := range mealCount {
 				mealCount[meal]++
 			}
