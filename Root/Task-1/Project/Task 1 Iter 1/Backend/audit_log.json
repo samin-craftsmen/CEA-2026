@@ -1,0 +1,23 @@
+[
+  {
+    "id": "audit_1",
+    "timestamp": "2026-02-23T14:04:59Z",
+    "action": "MEAL_SELECTION_UPDATE",
+    "actor": "employee101",
+    "actor_role": "employee",
+    "target_user": "employee101",
+    "target_date": "2026-02-25",
+    "change_details": {
+      "new_meals": [
+        "Snacks",
+        "Optional Dinner"
+      ],
+      "previous_meals": [
+        "Snacks",
+        "Lunch"
+      ]
+    },
+    "status": "success",
+    "ip_address": "::1"
+  }
+]

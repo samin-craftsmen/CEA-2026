@@ -26,4 +26,6 @@ func RegisterAdminRoutes(rg *gin.RouterGroup) {
 	rg.GET("/admin/headcount/teams/:date", handlers.HeadcountByTeam)
 	rg.GET("/admin/headcount/summary/:date", handlers.HeadcountSummary)
 	rg.GET("/admin/headcount/location/:date", handlers.HeadcountByLocation)
+
+	rg.GET("/admin/audit-logs", handlers.GetAuditLogs)
 }

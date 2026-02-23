@@ -1030,3 +1030,22 @@ func HeadcountSummary(c *gin.Context) {
 
 	c.JSON(http.StatusOK, resp)
 }
+
+
+// ---------- Get Audit Logs (Admin Only) ----------
+func GetAuditLogs(c *gin.Context) {
+    role := c.GetString("role")
+
+    if role != "admin" {
+        c.JSON(http.StatusForbidden, gin.H{"error": "Admin only"})
+        return
+    }
+
+    logs, err := utils.LoadAuditLogs()
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load audit logs"})
+        return
+    }
+
+    c.JSON(http.StatusOK, logs)
+}

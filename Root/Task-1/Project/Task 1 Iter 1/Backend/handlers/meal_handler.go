@@ -206,56 +206,71 @@ func GetMealItemsByDate(c *gin.Context) {
 
 // ---------- Override (Team Lead + Admin, Any Date) ----------
 func OverrideMealSelection(c *gin.Context) {
-	role := c.GetString("role")
+    role := c.GetString("role")
+    username := c.GetString("username")
+    ipAddress := c.ClientIP()
 
-	if role != "admin" && role != "teamLead" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Not allowed"})
-		return
-	}
+    if role != "admin" && role != "teamLead" {
+        utils.LogActionWithError("MEAL_SELECTION_OVERRIDE", username, role, "", "", ipAddress, "Unauthorized access attempt")
+        c.JSON(http.StatusForbidden, gin.H{"error": "Not allowed"})
+        return
+    }
 
-	var request struct {
-		Username string            `json:"username"`
-		Meals    []models.MealType `json:"meals"`
-		Date     string            `json:"date"`
-	}
+    var request struct {
+        Username string            `json:"username"`
+        Meals    []models.MealType `json:"meals"`
+        Date     string            `json:"date"`
+    }
 
-	if err := c.BindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
-		return
-	}
+    if err := c.BindJSON(&request); err != nil {
+        utils.LogActionWithError("MEAL_SELECTION_OVERRIDE", username, role, request.Username, request.Date, ipAddress, "Invalid input")
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+        return
+    }
 
-	if request.Date == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Date required"})
-		return
-	}
+    if request.Date == "" {
+        utils.LogActionWithError("MEAL_SELECTION_OVERRIDE", username, role, request.Username, "", ipAddress, "Date required")
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Date required"})
+        return
+    }
 
-	data, _ := utils.LoadParticipation()
+    data, _ := utils.LoadParticipation()
 
-	found := false
-	for i, entry := range data {
-		if entry.Username == request.Username && entry.Date == request.Date {
-			data[i].Meals = request.Meals
-			found = true
-			break
-		}
-	}
+    var previousMeals []models.MealType
+    found := false
+    for i, entry := range data {
+        if entry.Username == request.Username && entry.Date == request.Date {
+            previousMeals = entry.Meals
+            data[i].Meals = request.Meals
+            found = true
+            break
+        }
+    }
 
-	if !found {
-		data = append(data, models.Participation{
-			Username: request.Username,
-			Date:     request.Date,
-			Meals:    request.Meals,
-		})
-	}
+    if !found {
+        data = append(data, models.Participation{
+            Username: request.Username,
+            Date:     request.Date,
+            Meals:    request.Meals,
+        })
+    }
 
-	utils.SaveParticipation(data)
+    utils.SaveParticipation(data)
 
-	c.JSON(http.StatusOK, gin.H{"message": "Override successful"})
+    // Log the override action
+    changeDetails := map[string]interface{}{
+        "previous_meals": previousMeals,
+        "new_meals":      request.Meals,
+    }
+    utils.LogAction("MEAL_SELECTION_OVERRIDE", username, role, request.Username, request.Date, ipAddress, changeDetails, "success")
+
+    c.JSON(http.StatusOK, gin.H{"message": "Override successful"})
 }
-
 // ---------- Employee Update (Up to 7 Days Ahead) ----------
 func UpdateMealSelection(c *gin.Context) {
     username := c.GetString("username")
+    role := c.GetString("role")
+    ipAddress := c.ClientIP()
     
     var req struct {
         Date  string            `json:"date"`
@@ -263,12 +278,14 @@ func UpdateMealSelection(c *gin.Context) {
     }
 
     if err := c.BindJSON(&req); err != nil {
+        utils.LogActionWithError("MEAL_SELECTION_UPDATE", username, role, username, req.Date, ipAddress, "Invalid input")
         c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
         return
     }
 
     // Validate date is within 7 days from today
     if !isValidFutureDate(req.Date) {
+        utils.LogActionWithError("MEAL_SELECTION_UPDATE", username, role, username, req.Date, ipAddress, "Date outside allowed range")
         c.JSON(http.StatusBadRequest, gin.H{"error": "Date must be within 7 days from today"})
         return
     }
@@ -276,14 +293,17 @@ func UpdateMealSelection(c *gin.Context) {
     // Load current participation data
     participation, err := utils.LoadParticipation()
     if err != nil {
+        utils.LogActionWithError("MEAL_SELECTION_UPDATE", username, role, username, req.Date, ipAddress, "Failed to load participation")
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load participation"})
         return
     }
 
-    // Update or add participation entry
+    // Track previous meals for audit
+    var previousMeals []models.MealType
     found := false
     for i, p := range participation {
         if p.Username == username && p.Date == req.Date {
+            previousMeals = p.Meals
             participation[i].Meals = req.Meals
             found = true
             break
@@ -301,11 +321,19 @@ func UpdateMealSelection(c *gin.Context) {
 
     // Save updated participation
     if err := utils.SaveParticipation(participation); err != nil {
+        utils.LogActionWithError("MEAL_SELECTION_UPDATE", username, role, username, req.Date, ipAddress, "Failed to save participation")
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save participation"})
         return
     }
 
-    // ✅ Broadcast update to all connected admin clients
+    // Log the update action
+    changeDetails := map[string]interface{}{
+        "previous_meals": previousMeals,
+        "new_meals":      req.Meals,
+    }
+    utils.LogAction("MEAL_SELECTION_UPDATE", username, role, username, req.Date, ipAddress, changeDetails, "success")
+
+    //  Broadcast update to all connected admin clients
     workLocations, _ := utils.LoadWorkLocations()
     users, _ := utils.LoadUsers()
 

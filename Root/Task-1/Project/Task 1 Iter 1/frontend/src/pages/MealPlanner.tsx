@@ -49,7 +49,21 @@ export default function MealPlanner() {
   const [specialType, setSpecialType] = useState("office_closed");
   const [specialNote, setSpecialNote] = useState("");
   const [currentDayStatus, setCurrentDayStatus] = useState<any>(null);
+  // AUDIT LOGS //
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
 
+  const fetchAuditLogs = async () => {
+    setAuditLoading(true);
+
+    const res = await fetch("http://localhost:8080/admin/audit-logs", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const data = await res.json();
+    setAuditLogs(data);
+    setAuditLoading(false);
+  };
   // ================= COMPANY-WIDE WFH =================
   const [companyWFHStart, setCompanyWFHStart] = useState("");
   const [companyWFHEnd, setCompanyWFHEnd] = useState("");
@@ -119,6 +133,8 @@ export default function MealPlanner() {
   const [adminMemberMessage, setAdminMemberMessage] = useState("");
   const [adminMemberLoadedText, setAdminMemberLoadedText] = useState("");
 
+
+
   // ================= ADMIN ANNOUNCEMENT ================= //
   const [announcementDate, setAnnouncementDate] = useState("");
   const [announcementMsg, setAnnouncementMsg] = useState("");
@@ -139,7 +155,7 @@ export default function MealPlanner() {
     const { total_participants, office, wfh, opted_out, by_meal, day_status, day_note } = data;
 
     let dayText = "";
-    switch(day_status) {
+    switch (day_status) {
       case "office_closed": dayText = "🏢 Office Closed"; break;
       case "government_holiday": dayText = "🎉 Government Holiday"; break;
       case "special_celebration": dayText = `🎊 Special Celebration${day_note ? `: ${day_note}` : ""}`; break;
@@ -165,7 +181,7 @@ export default function MealPlanner() {
 
   const fetchAdminWorkLocation = async (date: string) => {
     if (!date) return;
-    
+
     const res = await fetch(
       `http://localhost:8080/admin/work-location?username=${adminMemberUsername}&date=${adminMemberDate}`,
       {
@@ -816,7 +832,7 @@ export default function MealPlanner() {
   };
 
   // ================= SAVE OWN MEALS =================
- const saveOwnMeals = async () => {
+  const saveOwnMeals = async () => {
     if (!mealDate) {
       alert("Please select a date");
       return;
@@ -834,9 +850,9 @@ export default function MealPlanner() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           date: mealDate,
-          meals: selectedMeals 
+          meals: selectedMeals
         }),
       });
 
@@ -1147,8 +1163,8 @@ export default function MealPlanner() {
               onChange={e => setSearchDate(e.target.value)}
             />
 
-            <button 
-              className="btn primary" 
+            <button
+              className="btn primary"
               onClick={fetchHeadcount}
               disabled={headcountLoading}
             >
@@ -1751,6 +1767,30 @@ export default function MealPlanner() {
               <p style={{ marginTop: "10px", color: "green" }}>
                 {companyWFHMessage}
               </p>
+            )}
+          </div>
+        )}
+
+        {/* AUDIT LOGS SECTION */}
+        {role === "admin" && (
+          <div className="section">
+            <h3>Audit Log Viewer</h3>
+            <button className="btn primary" onClick={fetchAuditLogs} disabled={auditLoading}>
+              {auditLoading ? "Loading..." : "Load Audit Logs"}
+            </button>
+
+            {auditLogs.length > 0 && (
+              <div style={{ marginTop: "15px" }}>
+                {auditLogs.map((log, idx) => (
+                  <div key={idx} style={{ borderBottom: "1px solid #ddd", padding: "10px 0" }}>
+                    <strong>{log.action}</strong> - {log.actor} ({log.actor_role})
+                    <br />
+                    <small>Target: {log.target_user} | Date: {log.target_date}</small>
+                    <br />
+                    <small>Time: {new Date(log.timestamp).toLocaleString()}</small>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}
