@@ -48,5 +48,40 @@
     "username": "employee201",
     "date": "2026-02-27",
     "meals": null
+  },
+  {
+    "username": "admin1",
+    "date": "2026-02-25",
+    "meals": [
+      "Iftar"
+    ]
+  },
+  {
+    "username": "teamLead101",
+    "date": "2026-02-25",
+    "meals": [
+      "Iftar"
+    ]
+  },
+  {
+    "username": "employee101",
+    "date": "2026-02-25",
+    "meals": [
+      "Snacks"
+    ]
+  },
+  {
+    "username": "employee102",
+    "date": "2026-02-25",
+    "meals": [
+      "Iftar"
+    ]
+  },
+  {
+    "username": "employee201",
+    "date": "2026-02-25",
+    "meals": [
+      "Iftar"
+    ]
   }
 ]
