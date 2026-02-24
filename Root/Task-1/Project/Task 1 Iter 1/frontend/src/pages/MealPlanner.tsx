@@ -53,6 +53,9 @@ export default function MealPlanner() {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
 
+  const [wfhCount, setWfhCount] = useState(0);
+  const [wfhLoading, setWfhLoading] = useState(false);
+
   const fetchAuditLogs = async () => {
     setAuditLoading(true);
 
@@ -421,6 +424,81 @@ export default function MealPlanner() {
 
     setMemberMessage("Member work location updated");
   };
+  // Live Headcount
+const [liveHeadcount, setLiveHeadcount] = useState<any>(null);
+const [wsConnected, setWsConnected] = useState(false);
+const [headcountDate, setHeadcountDate] = useState("");
+
+// Add this useEffect to handle WebSocket connection for live headcount
+useEffect(() => {
+  if (role !== "admin" || !headcountDate) {
+    setWsConnected(false);
+    setLiveHeadcount(null);
+    return;
+  }
+
+  const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const wsUrl = `${wsProtocol}//localhost:8080/meals/headcount/live/${headcountDate}?token=${token}`;
+  
+  const ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    console.log("WebSocket connected for live headcount");
+    setWsConnected(true);
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      console.log("Live headcount update:", data);
+      setLiveHeadcount(data);
+    } catch (error) {
+      console.error("Failed to parse WebSocket message:", error);
+    }
+  };
+
+  ws.onerror = (error) => {
+    console.error("WebSocket error:", error);
+    setWsConnected(false);
+  };
+
+  ws.onclose = () => {
+    console.log("WebSocket disconnected");
+    setWsConnected(false);
+  };
+
+  return () => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.close();
+    }
+  };
+}, [role, headcountDate, token]);
+
+  // Fetch WFH count for current month
+  const fetchWFHCount = async () => {
+    setWfhLoading(true);
+    try {
+      const res = await fetch("http://localhost:8080/me/wfh-count", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setWfhCount(data.wfh_days || 0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch WFH count:", error);
+    } finally {
+      setWfhLoading(false);
+    }
+  };
+
+  // Load WFH count when user info loads
+  useEffect(() => {
+    if (username) {
+      fetchWFHCount();
+    }
+  }, [username]);
+
 
   // ================= WORK LOCATION (EMPLOYEE) =================
   const [workDate, setWorkDate] = useState("");
@@ -680,6 +758,32 @@ export default function MealPlanner() {
 
     alert(`Opt-in applied to ${data.updated_count} users`);
   };
+
+  const [todayMeals, setTodayMeals] = useState<string[]>([]);
+  const [showTodayMeals, setShowTodayMeals] = useState(false);
+  const [todayMealsLoading, setTodayMealsLoading] = useState(false);
+
+  // Add this useEffect to fetch today's meals for all users
+  useEffect(() => {
+    if (role && showTodayMeals) {
+      setTodayMealsLoading(true);
+
+      fetch("http://localhost:8080/me/meals/today", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(res => res.json())
+        .then(data => {
+          console.log("Today's meals response:", data);
+          // Now it's a simple array
+          setTodayMeals(Array.isArray(data) ? data : []);
+          setTodayMealsLoading(false);
+        })
+        .catch(error => {
+          console.error("Failed to fetch today's meals:", error);
+          setTodayMealsLoading(false);
+        });
+    }
+  }, [role, showTodayMeals, token]);
 
   //======================== Team Bulk In Option =======================//
   const bulkOptOut = async () => {
@@ -981,8 +1085,43 @@ export default function MealPlanner() {
             <span className="badge">{username}</span>
             <span className="badge role">{role}</span>
             <span className="badge role">{team}</span>
+            {role === "employee" && (
+              <span className="badge" style={{ backgroundColor: "#28a745" }}>
+                WFH Days This Month: {wfhCount}
+              </span>
+            )}
           </div>
         </div>
+
+        {(role === "employee" || role === "teamlead" || role === "admin") && (
+          <div className="section">
+            <button
+              className="btn secondary"
+              onClick={() => setShowTodayMeals(!showTodayMeals)}
+            >
+              {showTodayMeals ? "Hide Today's Meals" : "View Today's Meals"}
+            </button>
+
+            {showTodayMeals && (
+              <>
+                <h3 style={{ marginTop: "20px" }}>Today's Meals</h3>
+                {todayMealsLoading ? (
+                  <p>Loading...</p>
+                ) : todayMeals.length === 0 ? (
+                  <p>No meals available for today</p>
+                ) : (
+                  <div className="meal-grid">
+                    {todayMeals.map((meal: string, index: number) => (
+                      <div key={index} className="meal-card">
+                        <p><strong>{meal}</strong></p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {/* ================= MEAL SELECTION (UP TO 7 DAYS) ================= */}
         {(role === "employee" || role === "teamlead" || role === "admin") && (
@@ -1230,6 +1369,97 @@ export default function MealPlanner() {
             )}
           </div>
         )}
+  {/*
+        {role === "admin" && (
+  <div className="section">
+    <h3>Live Headcount Monitor </h3>
+
+    <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+      <input
+        className="input"
+        type="date"
+        value={headcountDate}
+        onChange={e => setHeadcountDate(e.target.value)}
+        style={{ flex: 1 }}
+      />
+      <div
+        style={{
+          width: "12px",
+          height: "12px",
+          borderRadius: "50%",
+          backgroundColor: wsConnected ? "#28a745" : "#dc3545",
+          animation: wsConnected ? "pulse 2s infinite" : "none",
+        }}
+        title={wsConnected ? "Connected" : "Disconnected"}
+      />
+    </div>
+
+    {headcountDate && liveHeadcount && (
+      <div style={{ marginTop: "20px" }}>
+        <h4>Real-time Updates for {headcountDate}</h4>
+
+        {/* By Meal Type }
+        <div style={{ marginTop: "15px" }}>
+          <h5>Meals</h5>
+          <div className="headcount">
+            {Object.entries(liveHeadcount.by_meal || {}).map(([meal, count]) => (
+              <div key={meal} className="headcount-item">
+                <span>{meal}</span>
+                <span className="count">{String(count)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Overall Stats }
+        <div style={{ marginTop: "15px", display: "flex", gap: "30px" }}>
+          <div>
+            <strong style={{ fontSize: "0.9em" }}>Total Participants</strong>
+            <p style={{ fontSize: "1.5em", margin: "5px 0", color: "#007bff" }}>
+              {liveHeadcount.total_participants || 0}
+            </p>
+          </div>
+          <div>
+            <strong style={{ fontSize: "0.9em" }}>🏢 Office</strong>
+            <p style={{ fontSize: "1.5em", margin: "5px 0", color: "#007bff" }}>
+              {liveHeadcount.office || 0}
+            </p>
+          </div>
+          <div>
+            <strong style={{ fontSize: "0.9em" }}>🏠 WFH</strong>
+            <p style={{ fontSize: "1.5em", margin: "5px 0", color: "#28a745" }}>
+              {liveHeadcount.wfh || 0}
+            </p>
+          </div>
+          <div>
+            <strong style={{ fontSize: "0.9em" }}>❌ Opted Out</strong>
+            <p style={{ fontSize: "1.5em", margin: "5px 0", color: "#6c757d" }}>
+              {liveHeadcount.opted_out || 0}
+            </p>
+          </div>
+        </div>
+
+        {/* Day Status }
+        {liveHeadcount.day_status && (
+          <div style={{ marginTop: "15px", padding: "10px", backgroundColor: "#f0f0f0", borderRadius: "4px" }}>
+            <strong>Day Status:</strong>
+            <p style={{ margin: "5px 0" }}>
+              {liveHeadcount.day_status === "office_closed" && "🏢 Office Closed"}
+              {liveHeadcount.day_status === "government_holiday" && "🎉 Government Holiday"}
+              {liveHeadcount.day_status === "special_celebration" && `🎊 Special Celebration${liveHeadcount.day_note ? `: ${liveHeadcount.day_note}` : ""}`}
+            </p>
+          </div>
+        )}
+
+        {!wsConnected && (
+          <p style={{ marginTop: "10px", color: "#dc3545" }}>
+            ⚠️ WebSocket disconnected. Refresh to reconnect.
+          </p>
+        )}
+      </div>
+    )}
+  </div>
+)} */}
 
         {/* ================= TEAM LEAD BULK HANDLING ================= */}
         {role === "teamlead" && (
@@ -1697,35 +1927,36 @@ export default function MealPlanner() {
         )}
 
         {/* ================= ANNOUNCEMENT ================= */}
-        <div className="section">
-          <h3>Generate Announcement</h3>
+        {role === "admin" && (
+          <div className="section">
+            <h3>Generate Announcement</h3>
 
-          <input
-            type="date"
-            className="input"
-            value={announcementDate}
-            onChange={e => setAnnouncementDate(e.target.value)}
-          />
+            <input
+              type="date"
+              className="input"
+              value={announcementDate}
+              onChange={e => setAnnouncementDate(e.target.value)}
+            />
 
-          <button className="btn primary" onClick={fetchAnnouncement} style={{ marginTop: "10px" }}>
-            Generate Announcement
-          </button>
+            <button className="btn primary" onClick={fetchAnnouncement} style={{ marginTop: "10px" }}>
+              Generate Announcement
+            </button>
 
-          {announcementMsg && (
-            <div style={{ marginTop: "15px" }}>
-              <textarea
-                className="input"
-                value={announcementMsg}
-                readOnly
-                rows={10}
-              />
-              <button className="btn secondary" onClick={copyAnnouncement} style={{ marginTop: "10px" }}>
-                Copy to Clipboard
-              </button>
-            </div>
-          )}
-        </div>
-
+            {announcementMsg && (
+              <div style={{ marginTop: "15px" }}>
+                <textarea
+                  className="input"
+                  value={announcementMsg}
+                  readOnly
+                  rows={10}
+                />
+                <button className="btn secondary" onClick={copyAnnouncement} style={{ marginTop: "10px" }}>
+                  Copy to Clipboard
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         {/* ================= COMPANY-WIDE WFH ================= */}
         {role === "admin" && (
           <div className="section">
@@ -1794,6 +2025,9 @@ export default function MealPlanner() {
             )}
           </div>
         )}
+
+
+
 
         <button className="btn danger logout" onClick={logout}>
           Logout

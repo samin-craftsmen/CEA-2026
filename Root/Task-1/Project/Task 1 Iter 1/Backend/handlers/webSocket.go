@@ -6,7 +6,9 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
+	"github.com/samin-craftsmen/gin-project/utils"
 )
 
 var (
@@ -40,12 +42,43 @@ func broadcastHandler() {
 }
 
 func WebSocketHeadcount(c *gin.Context) {
-	role := c.GetString("role")
-	if role != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Not allowed"})
+	// Extract token from query params
+	token := c.Query("token")
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing token"})
 		return
 	}
 
+	// Validate token
+	parsedToken, err := utils.ValidateToken(token)
+	if err != nil {
+		log.Println("Token validation error:", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		return
+	}
+
+	// Extract claims
+	claims, ok := parsedToken.Claims.(jwt.MapClaims)
+	if !ok || !parsedToken.Valid {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid claims"})
+		return
+	}
+
+	// Check if user is admin
+	role, ok := claims["role"].(string)
+	if !ok || role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Admin only"})
+		return
+	}
+
+	// Get date from URL params
+	date := c.Param("date")
+	if date == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing date"})
+		return
+	}
+
+	// Upgrade HTTP connection to WebSocket
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Println("WebSocket upgrade error:", err)
@@ -53,10 +86,14 @@ func WebSocketHeadcount(c *gin.Context) {
 	}
 	defer conn.Close()
 
+	// Register client
 	mu.Lock()
 	clients[conn] = true
 	mu.Unlock()
 
+	log.Printf("WebSocket client connected for date: %s\n", date)
+
+	// Keep connection alive
 	for {
 		var msg map[string]interface{}
 		err := conn.ReadJSON(&msg)

@@ -1,7 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samin-craftsmen/gin-project/models"
@@ -185,4 +189,59 @@ func GetWorkLocation(c *gin.Context) {
 		"date":     req.Date,
 		"location": "Office",
 	})
+}
+
+type WorkLocation struct {
+	Username string `json:"username"`
+	Date     string `json:"date"`
+	Location string `json:"location"`
+}
+
+func CountWFHThisMonth(username string) (int, error) {
+	bs, err := os.ReadFile("work_locations.json")
+	if err != nil {
+		return 0, err
+	}
+
+	var locations []WorkLocation
+	if err := json.Unmarshal(bs, &locations); err != nil {
+		return 0, err
+	}
+
+	now := time.Now()
+	y, m := now.Year(), now.Month()
+	count := 0
+
+	for _, loc := range locations {
+		if loc.Username != username {
+			continue
+		}
+
+		t, err := time.Parse("2006-01-02", loc.Date)
+		if err != nil {
+			continue
+		}
+
+		if t.Year() == y && t.Month() == m && strings.ToUpper(loc.Location) == "WFH" {
+			count++
+		}
+	}
+
+	return count, nil
+}
+
+func MeWFHCountHandler(c *gin.Context) {
+	username, exists := c.Get("username")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	n, err := CountWFHThisMonth(username.(string))
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"wfh_days": n})
 }
