@@ -2,26 +2,31 @@
   {
     "username": "admin1",
     "password": "1234",
-    "role": "admin"
+    "role": "admin",
+    "team": "finance"
   },
   {
     "username": "teamLead101",
     "password": "1234",
-    "role": "teamLead"
+    "role": "teamLead",
+    "team": "mimir"
   },
   {
     "username": "employee101",
     "password": "1234",
-    "role": "employee"
+    "role": "employee",
+    "team": "mimir"
   },
   {
     "username": "employee102",
     "password": "1234",
-    "role": "employee"
+    "role": "employee",
+    "team": "mimir"
   },
   {
     "username": "employee201",
     "password": "1234",
-    "role": "employee"
+    "role": "employee",
+    "team": "cuttingroom"
   }
 ]

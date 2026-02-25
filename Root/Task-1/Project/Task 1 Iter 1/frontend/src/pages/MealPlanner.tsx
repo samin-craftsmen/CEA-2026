@@ -16,8 +16,10 @@ export default function MealPlanner() {
 
   const [role, setRole] = useState("");
   const [username, setUsername] = useState("");
+  const [team, setTeam] = useState("");
 
   const [selectedMeals, setSelectedMeals] = useState<string[]>([]);
+  const [mealDate, setMealDate] = useState(""); // Changed to allow any date
   const [searchUser, setSearchUser] = useState("");
   const [searchDate, setSearchDate] = useState("");
   const [headcount, setHeadcount] = useState<any>(null);
@@ -28,6 +30,842 @@ export default function MealPlanner() {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toISOString().split("T")[0];
+
+  const [teamMeals, setTeamMeals] = useState<any[]>([]);
+  const [showTeamMeals, setShowTeamMeals] = useState(false);
+
+  const [allTeamsData, setAllTeamsData] = useState<any>(null);
+  const [adminDate, setAdminDate] = useState("");
+
+  const [bulkDate, setBulkDate] = useState("");
+  const [bulkMeals, setBulkMeals] = useState<string[]>([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  const [adminBulkDate, setAdminBulkDate] = useState("");
+  const [adminBulkMeals, setAdminBulkMeals] = useState<string[]>([]);
+  const [adminBulkLoading, setAdminBulkLoading] = useState(false);
+
+  const [specialDate, setSpecialDate] = useState("");
+  const [specialType, setSpecialType] = useState("office_closed");
+  const [specialNote, setSpecialNote] = useState("");
+  const [currentDayStatus, setCurrentDayStatus] = useState<any>(null);
+  // AUDIT LOGS //
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+
+  const [wfhCount, setWfhCount] = useState(0);
+  const [wfhLoading, setWfhLoading] = useState(false);
+
+  const fetchAuditLogs = async () => {
+    setAuditLoading(true);
+
+    const res = await fetch("http://localhost:8080/admin/audit-logs", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const data = await res.json();
+    setAuditLogs(data);
+    setAuditLoading(false);
+  };
+  // ================= COMPANY-WIDE WFH =================
+  const [companyWFHStart, setCompanyWFHStart] = useState("");
+  const [companyWFHEnd, setCompanyWFHEnd] = useState("");
+  const [companyWFHNote, setCompanyWFHNote] = useState("");
+  const [companyWFHLoading, setCompanyWFHLoading] = useState(false);
+  const [companyWFHMessage, setCompanyWFHMessage] = useState("");
+
+  const applyCompanyWFH = async () => {
+    if (!companyWFHStart || !companyWFHEnd) {
+      alert("Select start and end date");
+      return;
+    }
+
+    setCompanyWFHLoading(true);
+    setCompanyWFHMessage("");
+
+    const res = await fetch("http://localhost:8080/admin/company-wfh", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        start_date: companyWFHStart,
+        end_date: companyWFHEnd,
+        note: companyWFHNote ? companyWFHNote : null,
+      }),
+    });
+
+    const data = await res.json();
+    setCompanyWFHLoading(false);
+
+    if (!res.ok) {
+      alert(data.error || "Failed to apply company WFH");
+      return;
+    }
+
+    setCompanyWFHMessage(
+      `Company-wide WFH applied for ${data.days_affected} days`
+    );
+  };
+
+  // ================= TEAM LEAD WORK LOCATION =================
+  const [leadWorkDate, setLeadWorkDate] = useState("");
+  const [leadWorkLocation, setLeadWorkLocation] = useState<"Office" | "WFH">("Office");
+  const [leadWorkLoading, setLeadWorkLoading] = useState(false);
+  const [leadWorkMessage, setLeadWorkMessage] = useState("");
+
+  // Team member view/edit
+  const [memberUsername, setMemberUsername] = useState("");
+  const [memberDate, setMemberDate] = useState("");
+  const [memberLocation, setMemberLocation] = useState<"Office" | "WFH">("Office");
+  const [memberLoading, setMemberLoading] = useState(false);
+  const [memberMessage, setMemberMessage] = useState("");
+  const [memberLoadedText, setMemberLoadedText] = useState("");
+
+  // Admin own & member work location
+  const [adminWorkDate, setAdminWorkDate] = useState("");
+  const [adminWorkLocation, setAdminWorkLocation] = useState<"Office" | "WFH">("Office");
+  const [adminWorkLoading, setAdminWorkLoading] = useState(false);
+  const [adminWorkMessage, setAdminWorkMessage] = useState("");
+
+  const [adminMemberUsername, setAdminMemberUsername] = useState("");
+  const [adminMemberDate, setAdminMemberDate] = useState("");
+  const [adminMemberLocation, setAdminMemberLocation] = useState<"Office" | "WFH">("Office");
+  const [adminMemberLoading, setAdminMemberLoading] = useState(false);
+  const [adminMemberMessage, setAdminMemberMessage] = useState("");
+  const [adminMemberLoadedText, setAdminMemberLoadedText] = useState("");
+
+
+
+  // ================= ADMIN ANNOUNCEMENT ================= //
+  const [announcementDate, setAnnouncementDate] = useState("");
+  const [announcementMsg, setAnnouncementMsg] = useState("");
+
+  const fetchAnnouncement = async () => {
+    if (!announcementDate) return alert("Select a date");
+
+    const res = await fetch(`http://localhost:8080/admin/headcount/summary/${announcementDate}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      return alert(err.error || "Failed to fetch headcount");
+    }
+
+    const data = await res.json();
+    const { total_participants, office, wfh, opted_out, by_meal, day_status, day_note } = data;
+
+    let dayText = "";
+    switch (day_status) {
+      case "office_closed": dayText = "🏢 Office Closed"; break;
+      case "government_holiday": dayText = "🎉 Government Holiday"; break;
+      case "special_celebration": dayText = `🎊 Special Celebration${day_note ? `: ${day_note}` : ""}`; break;
+      default: dayText = "Normal Day"; break;
+    }
+
+    let msg = `📅 Announcement for ${announcementDate}\n`;
+    msg += `Status: ${dayText}\n`;
+    msg += `Total Participants: ${total_participants} (Office: ${office}, WFH: ${wfh}, Opted Out: ${opted_out})\n\n`;
+    msg += `🍽️ Meals Summary:\n`;
+
+    for (const meal of Object.keys(by_meal)) {
+      msg += `- ${meal}: ${by_meal[meal]}\n`;
+    }
+
+    setAnnouncementMsg(msg);
+  };
+
+  const copyAnnouncement = () => {
+    navigator.clipboard.writeText(announcementMsg);
+    alert("Announcement copied to clipboard!");
+  };
+
+  const fetchAdminWorkLocation = async (date: string) => {
+    if (!date) return;
+
+    const res = await fetch(
+      `http://localhost:8080/admin/work-location?username=${adminMemberUsername}&date=${adminMemberDate}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await res.json();
+    if (res.ok) setAdminWorkLocation(data.location || "Office");
+  };
+
+  const saveAdminWorkLocation = async () => {
+    if (!adminWorkDate) return alert("Select a date");
+
+    if (isPastCutoff(adminWorkDate)) return alert("Cutoff passed.");
+
+    setAdminWorkLoading(true);
+
+    const res = await fetch("http://localhost:8080/admin/work-location/update", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        username,
+        date: adminWorkDate,
+        location: adminWorkLocation,
+      }),
+    });
+
+    const data = await res.json();
+    setAdminWorkLoading(false);
+
+    if (!res.ok) return alert(data.error || "Failed");
+
+    setAdminWorkMessage("Your work location updated");
+  };
+
+  const fetchAdminMemberWorkLocation = async () => {
+    if (!adminMemberUsername || !adminMemberDate) return alert("Enter username and date");
+
+    setAdminMemberLoading(true);
+    setAdminMemberMessage("");
+    setAdminMemberLoadedText("");
+
+    const res = await fetch(`http://localhost:8080/admin/work-location?username=${adminMemberUsername}&date=${adminMemberDate}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+    setAdminMemberLoading(false);
+
+    if (!res.ok) return alert(data.error || "Failed");
+
+    setAdminMemberLocation(data.location || "Office");
+    setAdminMemberLoadedText(`${adminMemberUsername} is working from ${data.location || "Office"} on ${adminMemberDate}`);
+  };
+
+  const updateAdminMemberWorkLocation = async () => {
+    if (!adminMemberUsername || !adminMemberDate) return alert("Enter username and date");
+
+    setAdminMemberLoading(true);
+
+    const res = await fetch("http://localhost:8080/admin/work-location/update", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        username: adminMemberUsername,
+        date: adminMemberDate,
+        location: adminMemberLocation,
+      }),
+    });
+
+    const data = await res.json();
+    setAdminMemberLoading(false);
+
+    if (!res.ok) return alert(data.error || "Failed");
+
+    setAdminMemberMessage("Member work location updated");
+  };
+
+  const _isPastCutoff = (selectedDate: string) => {
+    if (!selectedDate) return true;
+
+    const selected = new Date(selectedDate);
+    const cutoff = new Date(selected);
+    cutoff.setDate(cutoff.getDate() - 1);
+    cutoff.setHours(21, 0, 0, 0); // 9 PM previous day
+
+    return new Date() > cutoff;
+  };
+
+  const fetchLeadWorkLocation = async (date: string) => {
+    if (!date) return;
+
+    const res = await fetch("http://localhost:8080/me/work-location", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        username,
+        date,
+      }),
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      setLeadWorkLocation(data.location || "Office");
+    }
+  };
+
+  const saveLeadWorkLocation = async () => {
+    if (!leadWorkDate) {
+      alert("Select a date");
+      return;
+    }
+
+    if (_isPastCutoff(leadWorkDate)) {
+      alert("Cutoff time passed.");
+      return;
+    }
+
+    setLeadWorkLoading(true);
+
+    const res = await fetch("http://localhost:8080/me/work-location", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        username,
+        date: leadWorkDate,
+        location: leadWorkLocation,
+      }),
+    });
+
+    const data = await res.json();
+    setLeadWorkLoading(false);
+
+    if (!res.ok) {
+      alert(data.error || "Failed");
+      return;
+    }
+
+    setLeadWorkMessage("Work location updated");
+  };
+
+  useEffect(() => {
+    if (role === "teamlead" && leadWorkDate) {
+      fetchLeadWorkLocation(leadWorkDate);
+    }
+  }, [leadWorkDate]);
+
+  const fetchMemberWorkLocation = async () => {
+    if (!memberUsername || !memberDate) {
+      alert("Enter username and date");
+      return;
+    }
+
+    setMemberLoading(true);
+    setMemberMessage("");
+    setMemberLoadedText("");
+
+    const res = await fetch("http://localhost:8080/teams/work-location", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        username: memberUsername,
+        date: memberDate,
+      }),
+    });
+
+    const data = await res.json();
+    setMemberLoading(false);
+
+    if (!res.ok) {
+      alert(data.error || "Failed");
+      return;
+    }
+
+    const location = data.location || "Office";
+    setMemberLocation(location);
+
+    setMemberLoadedText(
+      `${memberUsername} is working from ${location} on ${memberDate}`
+    );
+  };
+
+  const updateMemberWorkLocation = async () => {
+    if (!memberUsername || !memberDate) {
+      alert("Enter username and date");
+      return;
+    }
+
+    setMemberLoading(true);
+
+    const res = await fetch(
+      "http://localhost:8080/teams/work-location/update",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          username: memberUsername,
+          date: memberDate,
+          location: memberLocation,
+        }),
+      }
+    );
+
+    const data = await res.json();
+    setMemberLoading(false);
+
+    if (!res.ok) {
+      alert(data.error || "Failed");
+      return;
+    }
+
+    setMemberMessage("Member work location updated");
+  };
+  // Live Headcount
+const [liveHeadcount, setLiveHeadcount] = useState<any>(null);
+const [wsConnected, setWsConnected] = useState(false);
+const [headcountDate, setHeadcountDate] = useState("");
+
+// Add this useEffect to handle WebSocket connection for live headcount
+useEffect(() => {
+  if (role !== "admin" || !headcountDate) {
+    setWsConnected(false);
+    setLiveHeadcount(null);
+    return;
+  }
+
+  const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const wsUrl = `${wsProtocol}//localhost:8080/meals/headcount/live/${headcountDate}?token=${token}`;
+  
+  const ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    console.log("WebSocket connected for live headcount");
+    setWsConnected(true);
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      console.log("Live headcount update:", data);
+      setLiveHeadcount(data);
+    } catch (error) {
+      console.error("Failed to parse WebSocket message:", error);
+    }
+  };
+
+  ws.onerror = (error) => {
+    console.error("WebSocket error:", error);
+    setWsConnected(false);
+  };
+
+  ws.onclose = () => {
+    console.log("WebSocket disconnected");
+    setWsConnected(false);
+  };
+
+  return () => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.close();
+    }
+  };
+}, [role, headcountDate, token]);
+
+  // Fetch WFH count for current month
+  const fetchWFHCount = async () => {
+    setWfhLoading(true);
+    try {
+      const res = await fetch("http://localhost:8080/me/wfh-count", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setWfhCount(data.wfh_days || 0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch WFH count:", error);
+    } finally {
+      setWfhLoading(false);
+    }
+  };
+
+  // Load WFH count when user info loads
+  useEffect(() => {
+    if (username) {
+      fetchWFHCount();
+    }
+  }, [username]);
+
+
+  // ================= WORK LOCATION (EMPLOYEE) =================
+  const [workDate, setWorkDate] = useState("");
+  const [workLocation, setWorkLocation] = useState<"Office" | "WFH">("Office");
+  const [workLoading, setWorkLoading] = useState(false);
+  const [workMessage, setWorkMessage] = useState("");
+
+  const isPastCutoff = (selectedDate: string) => {
+    if (!selectedDate) return true;
+
+    const selected = new Date(selectedDate);
+    const cutoff = new Date(selected);
+    cutoff.setDate(cutoff.getDate() - 1);
+    cutoff.setHours(21, 0, 0, 0); // 9 PM previous day
+
+    return new Date() > cutoff;
+  };
+
+  const getMaxDate = () => {
+    const today = new Date();
+    const maxDate = new Date(today);
+    maxDate.setDate(maxDate.getDate() + 7);
+    return maxDate.toISOString().split("T")[0];
+  };
+
+  const getMinDate = () => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  };
+
+  const fetchWorkLocation = async (date: string) => {
+    if (!date) return;
+
+    const res = await fetch("http://localhost:8080/me/work-location", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        username,
+        date,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      setWorkLocation(data.location || "Office");
+    }
+  };
+
+  const saveWorkLocation = async () => {
+    if (!workDate) {
+      alert("Select a date");
+      return;
+    }
+
+    if (isPastCutoff(workDate)) {
+      alert("Cutoff time passed. You cannot modify this date.");
+      return;
+    }
+
+    setWorkLoading(true);
+
+    const res = await fetch("http://localhost:8080/me/work-location", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        username,
+        date: workDate,
+        location: workLocation,
+      }),
+    });
+
+    const data = await res.json();
+    setWorkLoading(false);
+
+    if (!res.ok) {
+      alert(data.error || "Failed to save");
+      return;
+    }
+
+    setWorkMessage("Work location updated successfully");
+
+    // Optional: if WFH → reload tomorrow meals because backend opts out
+    if (workLocation === "WFH") {
+      setSelectedMeals([]);
+    }
+  };
+
+  useEffect(() => {
+    if (role === "employee" && workDate) {
+      fetchWorkLocation(workDate);
+    }
+  }, [workDate]);
+
+  // ========================= Special Day controls =========================//
+  const setSpecialDay = async () => {
+    if (!specialDate) {
+      alert("Select a date");
+      return;
+    }
+
+    const res = await fetch("http://localhost:8080/admin/day-controls", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        date: specialDate,
+        type: specialType,
+        note:
+          specialType === "special_celebration" && specialNote
+            ? specialNote
+            : null,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Failed");
+      return;
+    }
+
+    alert("Special day saved!");
+    fetchDayStatus();
+  };
+
+  const fetchDayStatus = async () => {
+    if (!specialDate) return;
+
+    const res = await fetch(
+      `http://localhost:8080/admin/day-controls/${specialDate}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    const data = await res.json();
+    setCurrentDayStatus(data);
+  };
+
+  const removeSpecialDay = async () => {
+    if (!specialDate) {
+      alert("Select a date");
+      return;
+    }
+
+    const res = await fetch(
+      `http://localhost:8080/admin/day-controls/${specialDate}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Failed");
+      return;
+    }
+
+    alert("Special day removed!");
+    setCurrentDayStatus(null);
+  };
+
+  // ============================= Admin Bulk Ops ==========================//
+  const toggleAdminBulkMeal = (meal: string) => {
+    if (adminBulkMeals.includes(meal)) {
+      setAdminBulkMeals(adminBulkMeals.filter(m => m !== meal));
+    } else {
+      setAdminBulkMeals([...adminBulkMeals, meal]);
+    }
+  };
+
+  const toggleBulkMeal = (meal: string) => {
+    if (bulkMeals.includes(meal)) {
+      setBulkMeals(bulkMeals.filter(m => m !== meal));
+    } else {
+      setBulkMeals([...bulkMeals, meal]);
+    }
+  };
+
+  const adminBulkOptOut = async () => {
+    if (!adminBulkDate || adminBulkMeals.length === 0) {
+      alert("Select date and at least one meal");
+      return;
+    }
+
+    setAdminBulkLoading(true);
+
+    const res = await fetch(
+      `http://localhost:8080/admin/meals/opt-out/${adminBulkDate}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          date: adminBulkDate,
+          meals: adminBulkMeals,
+        }),
+      }
+    );
+
+    const data = await res.json();
+    setAdminBulkLoading(false);
+
+    if (!res.ok) {
+      alert(data.error || "Operation failed");
+      return;
+    }
+
+    alert(`Opt-out applied to ${data.updated_count} users`);
+  };
+
+  const adminBulkOptIn = async () => {
+    if (!adminBulkDate || adminBulkMeals.length === 0) {
+      alert("Select date and at least one meal");
+      return;
+    }
+
+    setAdminBulkLoading(true);
+
+    const res = await fetch(
+      `http://localhost:8080/admin/meals/opt-in/${adminBulkDate}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          date: adminBulkDate,
+          meals: adminBulkMeals,
+        }),
+      }
+    );
+
+    const data = await res.json();
+    setAdminBulkLoading(false);
+
+    if (!res.ok) {
+      alert(data.error || "Operation failed");
+      return;
+    }
+
+    alert(`Opt-in applied to ${data.updated_count} users`);
+  };
+
+  const [todayMeals, setTodayMeals] = useState<string[]>([]);
+  const [showTodayMeals, setShowTodayMeals] = useState(false);
+  const [todayMealsLoading, setTodayMealsLoading] = useState(false);
+
+  // Add this useEffect to fetch today's meals for all users
+  useEffect(() => {
+    if (role && showTodayMeals) {
+      setTodayMealsLoading(true);
+
+      fetch("http://localhost:8080/me/meals/today", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(res => res.json())
+        .then(data => {
+          console.log("Today's meals response:", data);
+          // Now it's a simple array
+          setTodayMeals(Array.isArray(data) ? data : []);
+          setTodayMealsLoading(false);
+        })
+        .catch(error => {
+          console.error("Failed to fetch today's meals:", error);
+          setTodayMealsLoading(false);
+        });
+    }
+  }, [role, showTodayMeals, token]);
+
+  //======================== Team Bulk In Option =======================//
+  const bulkOptOut = async () => {
+    if (!bulkDate || bulkMeals.length === 0) {
+      alert("Select date and at least one meal");
+      return;
+    }
+
+    setBulkLoading(true);
+
+    const res = await fetch("http://localhost:8080/teams/meals/optout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        date: bulkDate,
+        meals: bulkMeals,
+      }),
+    });
+
+    const data = await res.json();
+    setBulkLoading(false);
+
+    if (!res.ok) {
+      alert(data.error || "Operation failed");
+      return;
+    }
+
+    alert(`Opt-out successful for ${data.updated_count} members`);
+  };
+
+  // ================= Team Bulk Out Option ==============================//
+  const bulkOptIn = async () => {
+    if (!bulkDate || bulkMeals.length === 0) {
+      alert("Select date and at least one meal");
+      return;
+    }
+
+    setBulkLoading(true);
+
+    const res = await fetch("http://localhost:8080/teams/meals/optin", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        date: bulkDate,
+        meals: bulkMeals,
+      }),
+    });
+
+    const data = await res.json();
+    setBulkLoading(false);
+
+    if (!res.ok) {
+      alert(data.error || "Operation failed");
+      return;
+    }
+
+    alert(`Opt-in successful for ${data.updated_count} members`);
+  };
+
+  // ================= FETCH ALL TEAMS PARTICIPATION (ADMIN ONLY) =================
+  const fetchAllTeamsParticipation = async () => {
+    if (!adminDate) {
+      alert("Select a date first");
+      return;
+    }
+
+    const res = await fetch(
+      `http://localhost:8080/admin/teams/meals/${adminDate}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    const data = await res.json();
+    setAllTeamsData(data);
+  };
 
   // ================= LOAD USER INFO =================
   useEffect(() => {
@@ -45,14 +883,29 @@ export default function MealPlanner() {
         if (!data) return;
         setRole(data.role.toLowerCase());
         setUsername(data.username);
+        setTeam(data.team);
       });
   }, []);
 
-  // ================= LOAD TOMORROW MEALS =================
+  // ================= LOAD TEAM TODAY MEALS (TEAM LEAD) =================
   useEffect(() => {
-    if (!role) return;
+    if (role !== "teamlead") return;
 
-    fetch("http://localhost:8080/meals/tomorrow", {
+    fetch("http://localhost:8080/teams/meals/today", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => res.json())
+      .then(data => {
+        setTeamMeals(data || []);
+      });
+  }, [role]);
+
+  // ================= LOAD MEALS FOR SELECTED DATE =================
+  useEffect(() => {
+    if (!role || !mealDate) return;
+
+    fetch(`http://localhost:8080/meals/update`, {
+      method: "GET",
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => res.json())
@@ -62,8 +915,8 @@ export default function MealPlanner() {
         }
       });
 
-    // Load meal items for tomorrow
-    fetch(`http://localhost:8080/meals/items/${tomorrowStr}`, {
+    // Load meal items for selected date
+    fetch(`http://localhost:8080/meals/items/${mealDate}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => res.json())
@@ -72,7 +925,7 @@ export default function MealPlanner() {
         setItemInputs(data.items || {});
       });
 
-  }, [role]);
+  }, [role, mealDate]);
 
   const toggleMeal = (meal: string) => {
     if (selectedMeals.includes(meal)) {
@@ -84,20 +937,52 @@ export default function MealPlanner() {
 
   // ================= SAVE OWN MEALS =================
   const saveOwnMeals = async () => {
-    await fetch("http://localhost:8080/meals/update", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ meals: selectedMeals }),
-    });
+    if (!mealDate) {
+      alert("Please select a date");
+      return;
+    }
 
-    alert("Saved for tomorrow!");
+    if (isPastCutoff(mealDate)) {
+      alert("Cutoff time passed for this date");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:8080/meals/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          date: mealDate,
+          meals: selectedMeals
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Failed to save meals");
+        return;
+      }
+
+      alert(`Meals saved for ${mealDate}!`);
+      setSelectedMeals([]);
+      setMealDate("");
+    } catch (error) {
+      console.error("Error saving meals:", error);
+      alert("Error saving meals. Check console.");
+    }
   };
 
   // ================= SAVE MEAL ITEMS (ADMIN ONLY) =================
   const saveMealItems = async () => {
+    if (!mealDate) {
+      alert("Please select a date");
+      return;
+    }
+
     await fetch("http://localhost:8080/meals/items/update", {
       method: "POST",
       headers: {
@@ -105,7 +990,7 @@ export default function MealPlanner() {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        date: tomorrowStr,
+        date: mealDate,
         items: itemInputs,
       }),
     });
@@ -137,21 +1022,53 @@ export default function MealPlanner() {
   };
 
   // ================= HEADCOUNT =================
+  const [headcountByTeam, setHeadcountByTeam] = useState<any>(null);
+  const [headcountByLocation, setHeadcountByLocation] = useState<any>(null);
+  const [headcountLoading, setHeadcountLoading] = useState(false);
+
   const fetchHeadcount = async () => {
     if (!searchDate) {
       alert("Select a date first");
       return;
     }
 
-    const res = await fetch(
-      `http://localhost:8080/meals/headcount/${searchDate}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    setHeadcountLoading(true);
 
-    const data = await res.json();
-    setHeadcount(data);
+    try {
+      // Fetch by meal type
+      const res1 = await fetch(
+        `http://localhost:8080/meals/headcount/${searchDate}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const data1 = await res1.json();
+      setHeadcount(data1);
+
+      // Fetch by team
+      const res2 = await fetch(
+        `http://localhost:8080/admin/headcount/teams/${searchDate}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const data2 = await res2.json();
+      setHeadcountByTeam(data2);
+
+      // Fetch by location
+      const res3 = await fetch(
+        `http://localhost:8080/admin/headcount/location/${searchDate}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const data3 = await res3.json();
+      setHeadcountByLocation(data3);
+    } catch (error) {
+      alert("Failed to fetch headcount data");
+    } finally {
+      setHeadcountLoading(false);
+    }
   };
 
   const logout = () => {
@@ -159,132 +1076,963 @@ export default function MealPlanner() {
     navigate("/");
   };
 
- return (
-  <div className="page">
-    <div className="card">
-      <div className="header">
-        <h2>🍽️ Meal Planner</h2>
-        <div>
-          <span className="badge">{username}</span>
-          <span className="badge role">{role}</span>
+  return (
+    <div className="page">
+      <div className="card">
+        <div className="header">
+          <h2>🍽️ Meal Planner</h2>
+          <div>
+            <span className="badge">{username}</span>
+            <span className="badge role">{role}</span>
+            <span className="badge role">{team}</span>
+            {role === "employee" && (
+              <span className="badge" style={{ backgroundColor: "#28a745" }}>
+                WFH Days This Month: {wfhCount}
+              </span>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* ================= MEAL SELECTION ================= */}
-      {(role === "employee" || role === "teamlead" || role === "admin") && (
-        <>
-          <h3>Tomorrow's Meals</h3>
+        {(role === "employee" || role === "teamlead" || role === "admin") && (
+          <div className="section">
+            <button
+              className="btn secondary"
+              onClick={() => setShowTodayMeals(!showTodayMeals)}
+            >
+              {showTodayMeals ? "Hide Today's Meals" : "View Today's Meals"}
+            </button>
 
-          <div className="meal-grid">
-            {allMeals.map(meal => (
-              <div key={meal} className="meal-card">
-                <label className="checkbox">
-                  <input
-                    type="checkbox"
-                    checked={selectedMeals.includes(meal)}
-                    onChange={() => toggleMeal(meal)}
-                  />
-                  {meal}
-                </label>
-
-                {mealItems[meal]?.length > 0 && (
-                  <ul>
-                    {mealItems[meal].map((item: string, i: number) => (
-                      <li key={i}>{item}</li>
+            {showTodayMeals && (
+              <>
+                <h3 style={{ marginTop: "20px" }}>Today's Meals</h3>
+                {todayMealsLoading ? (
+                  <p>Loading...</p>
+                ) : todayMeals.length === 0 ? (
+                  <p>No meals available for today</p>
+                ) : (
+                  <div className="meal-grid">
+                    {todayMeals.map((meal: string, index: number) => (
+                      <div key={index} className="meal-card">
+                        <p><strong>{meal}</strong></p>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ================= MEAL SELECTION (UP TO 7 DAYS) ================= */}
+        {(role === "employee" || role === "teamlead" || role === "admin") && (
+          <>
+            <h3>Select Meals (Up to 7 Days Ahead)</h3>
+
+            <input
+              className="input"
+              type="date"
+              value={mealDate}
+              onChange={e => setMealDate(e.target.value)}
+              min={getMinDate()}
+              max={getMaxDate()}
+            />
+
+            {mealDate && (
+              <>
+                <div className="meal-grid">
+                  {allMeals.map(meal => (
+                    <div key={meal} className="meal-card">
+                      <label className="checkbox">
+                        <input
+                          type="checkbox"
+                          checked={selectedMeals.includes(meal)}
+                          onChange={() => toggleMeal(meal)}
+                        />
+                        {meal}
+                      </label>
+
+                      {mealItems[meal]?.length > 0 && (
+                        <ul>
+                          {mealItems[meal].map((item: string, i: number) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {role === "admin" && (
+                        <input
+                          className="input"
+                          placeholder="Add items (comma separated)"
+                          value={(itemInputs[meal] || []).join(", ")}
+                          onChange={e =>
+                            setItemInputs({
+                              ...itemInputs,
+                              [meal]: e.target.value
+                                .split(",")
+                                .map(s => s.trim()),
+                            })
+                          }
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <button className="btn primary" onClick={saveOwnMeals}>
+                  Save Selection
+                </button>
 
                 {role === "admin" && (
-                  <input
-                    className="input"
-                    placeholder="Add items (comma separated)"
-                    value={(itemInputs[meal] || []).join(", ")}
-                    onChange={e =>
-                      setItemInputs({
-                        ...itemInputs,
-                        [meal]: e.target.value
-                          .split(",")
-                          .map(s => s.trim()),
-                      })
-                    }
-                  />
+                  <button className="btn secondary" onClick={saveMealItems}>
+                    Save Meal Items
+                  </button>
                 )}
+              </>
+            )}
+          </>
+        )}
+
+        {/* ================= ALL TEAMS PARTICIPATION (ADMIN ONLY) ================= */}
+        {role === "admin" && (
+          <div className="section">
+            <h3>All Teams Participation</h3>
+
+            <input
+              className="input"
+              type="date"
+              value={adminDate}
+              onChange={e => setAdminDate(e.target.value)}
+            />
+
+            <button
+              className="btn primary"
+              onClick={fetchAllTeamsParticipation}
+            >
+              Load Participation
+            </button>
+
+            {allTeamsData &&
+              Object.entries(allTeamsData).map(([teamName, members]: any) => (
+                <div key={teamName} className="team-card">
+                  <div className="team-header">
+                    <strong>{teamName}</strong>
+                  </div>
+
+                  {members.map((member: any, index: number) => (
+                    <div key={index} style={{ marginBottom: "8px" }}>
+                      <strong>{member.username}:</strong>{" "}
+                      {member.meals?.join(", ") || "No meals"}
+                    </div>
+                  ))}
+                </div>
+              ))}
+          </div>
+        )}
+
+        {/* ================= TEAM TODAY MEALS (TEAM LEAD ONLY) ================= */}
+        {role === "teamlead" && (
+          <div className="section">
+            <button
+              className="btn secondary"
+              onClick={() => setShowTeamMeals(!showTeamMeals)}
+            >
+              {showTeamMeals ? "Hide Team Meal Status" : "View Team Meal Status"}
+            </button>
+
+            {showTeamMeals && (
+              <>
+                <h3 style={{ marginTop: "20px" }}>Today's Team Meal Status</h3>
+
+                {teamMeals.length === 0 && <p>No data found</p>}
+
+                {teamMeals.map((entry, index) => (
+                  <div key={index} className="team-card">
+                    <div className="team-header">
+                      <strong>{entry.username}</strong>
+                    </div>
+
+                    <div className="team-meals">
+                      {entry.meals?.length > 0 ? (
+                        <p>{entry.meals.join(", ")}</p>
+                      ) : (
+                        <p>No meals selected</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ================= OVERRIDE ================= */}
+        {(role === "teamlead" || role === "admin") && (
+          <div className="section">
+            <h3>Modify Employee Meals</h3>
+
+            <input
+              className="input"
+              placeholder="Employee Username"
+              value={searchUser}
+              onChange={e => setSearchUser(e.target.value)}
+            />
+
+            <input
+              className="input"
+              type="date"
+              value={searchDate}
+              onChange={e => setSearchDate(e.target.value)}
+            />
+
+            <button className="btn warning" onClick={overrideEmployee}>
+              Update Employee Meals
+            </button>
+          </div>
+        )}
+
+        {/* ================= HEADCOUNT ================= */}
+        {role === "admin" && (
+          <div className="section">
+            <h3>Headcount Report</h3>
+
+            <input
+              className="input"
+              type="date"
+              value={searchDate}
+              onChange={e => setSearchDate(e.target.value)}
+            />
+
+            <button
+              className="btn primary"
+              onClick={fetchHeadcount}
+              disabled={headcountLoading}
+            >
+              {headcountLoading ? "Loading..." : "Get Headcount"}
+            </button>
+
+            {headcount && (
+              <>
+                {/* By Meal Type */}
+                <div style={{ marginTop: "20px" }}>
+                  <h4> By Meal Type</h4>
+                  <div className="headcount">
+                    {Object.entries(headcount).map(([meal, count]) => (
+                      <div key={meal} className="headcount-item">
+                        <span>{meal}</span>
+                        <span className="count">{String(count)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* By Team */}
+                {headcountByTeam && Object.keys(headcountByTeam).length > 0 && (
+                  <div style={{ marginTop: "20px" }}>
+                    <h4> By Team</h4>
+                    {Object.entries(headcountByTeam).map(([team, meals]: any) => (
+                      <div key={team} className="team-headcount">
+                        <strong>{team}</strong>
+                        <div style={{ marginLeft: "15px", marginTop: "8px" }}>
+                          {Object.entries(meals).map(([meal, count]) => (
+                            <div key={meal} className="headcount-item" style={{ fontSize: "0.9em" }}>
+                              <span>{meal}</span>
+                              <span className="count">{String(count)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Overall Office vs WFH */}
+                {headcountByLocation && (
+                  <div style={{ marginTop: "20px" }}>
+                    <h4> Office vs WFH (Overall)</h4>
+                    <div style={{ display: "flex", gap: "30px", alignItems: "center" }}>
+                      <div>
+                        <span style={{ color: "#007bff", fontSize: "1.1em" }}>🏢 Office: </span>
+                        <span className="count" style={{ fontSize: "1.3em" }}>
+                          {headcountByLocation.office || 0}
+                        </span>
+                      </div>
+                      <div>
+                        <span style={{ color: "#28a745", fontSize: "1.1em" }}>🏠 WFH: </span>
+                        <span className="count" style={{ fontSize: "1.3em" }}>
+                          {headcountByLocation.wfh || 0}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+  {/*
+        {role === "admin" && (
+  <div className="section">
+    <h3>Live Headcount Monitor </h3>
+
+    <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+      <input
+        className="input"
+        type="date"
+        value={headcountDate}
+        onChange={e => setHeadcountDate(e.target.value)}
+        style={{ flex: 1 }}
+      />
+      <div
+        style={{
+          width: "12px",
+          height: "12px",
+          borderRadius: "50%",
+          backgroundColor: wsConnected ? "#28a745" : "#dc3545",
+          animation: wsConnected ? "pulse 2s infinite" : "none",
+        }}
+        title={wsConnected ? "Connected" : "Disconnected"}
+      />
+    </div>
+
+    {headcountDate && liveHeadcount && (
+      <div style={{ marginTop: "20px" }}>
+        <h4>Real-time Updates for {headcountDate}</h4>
+
+        {/* By Meal Type }
+        <div style={{ marginTop: "15px" }}>
+          <h5>Meals</h5>
+          <div className="headcount">
+            {Object.entries(liveHeadcount.by_meal || {}).map(([meal, count]) => (
+              <div key={meal} className="headcount-item">
+                <span>{meal}</span>
+                <span className="count">{String(count)}</span>
               </div>
             ))}
           </div>
-
-          <button className="btn primary" onClick={saveOwnMeals}>
-            Save Selection
-          </button>
-
-          {role === "admin" && (
-            <button className="btn secondary" onClick={saveMealItems}>
-              Save Meal Items
-            </button>
-          )}
-        </>
-      )}
-
-      {/* ================= OVERRIDE ================= */}
-      {(role === "teamlead" || role === "admin") && (
-        <div className="section">
-          <h3>Modify Employee Meals</h3>
-
-          <input
-            className="input"
-            placeholder="Employee Username"
-            value={searchUser}
-            onChange={e => setSearchUser(e.target.value)}
-          />
-
-          <input
-            className="input"
-            type="date"
-            value={searchDate}
-            onChange={e => setSearchDate(e.target.value)}
-          />
-
-          <button className="btn warning" onClick={overrideEmployee}>
-            Update Employee Meals
-          </button>
         </div>
-      )}
 
-      {/* ================= HEADCOUNT ================= */}
-      {role === "admin" && (
-        <div className="section">
-          <h3>Headcount</h3>
+        {/* Overall Stats }
+        <div style={{ marginTop: "15px", display: "flex", gap: "30px" }}>
+          <div>
+            <strong style={{ fontSize: "0.9em" }}>Total Participants</strong>
+            <p style={{ fontSize: "1.5em", margin: "5px 0", color: "#007bff" }}>
+              {liveHeadcount.total_participants || 0}
+            </p>
+          </div>
+          <div>
+            <strong style={{ fontSize: "0.9em" }}>🏢 Office</strong>
+            <p style={{ fontSize: "1.5em", margin: "5px 0", color: "#007bff" }}>
+              {liveHeadcount.office || 0}
+            </p>
+          </div>
+          <div>
+            <strong style={{ fontSize: "0.9em" }}>🏠 WFH</strong>
+            <p style={{ fontSize: "1.5em", margin: "5px 0", color: "#28a745" }}>
+              {liveHeadcount.wfh || 0}
+            </p>
+          </div>
+          <div>
+            <strong style={{ fontSize: "0.9em" }}>❌ Opted Out</strong>
+            <p style={{ fontSize: "1.5em", margin: "5px 0", color: "#6c757d" }}>
+              {liveHeadcount.opted_out || 0}
+            </p>
+          </div>
+        </div>
 
-          <input
-            className="input"
-            type="date"
-            value={searchDate}
-            onChange={e => setSearchDate(e.target.value)}
-          />
+        {/* Day Status }
+        {liveHeadcount.day_status && (
+          <div style={{ marginTop: "15px", padding: "10px", backgroundColor: "#f0f0f0", borderRadius: "4px" }}>
+            <strong>Day Status:</strong>
+            <p style={{ margin: "5px 0" }}>
+              {liveHeadcount.day_status === "office_closed" && "🏢 Office Closed"}
+              {liveHeadcount.day_status === "government_holiday" && "🎉 Government Holiday"}
+              {liveHeadcount.day_status === "special_celebration" && `🎊 Special Celebration${liveHeadcount.day_note ? `: ${liveHeadcount.day_note}` : ""}`}
+            </p>
+          </div>
+        )}
 
-          <button className="btn primary" onClick={fetchHeadcount}>
-            Get Headcount
-          </button>
+        {!wsConnected && (
+          <p style={{ marginTop: "10px", color: "#dc3545" }}>
+            ⚠️ WebSocket disconnected. Refresh to reconnect.
+          </p>
+        )}
+      </div>
+    )}
+  </div>
+)} */}
 
-          {headcount && (
-            <div className="headcount">
-              {Object.entries(headcount).map(([meal, count]) => (
-                <div key={meal} className="headcount-item">
-                  <span>{meal}</span>
-                  <span>{String(count)}</span>
-                </div>
+        {/* ================= TEAM LEAD BULK HANDLING ================= */}
+        {role === "teamlead" && (
+          <div className="section">
+            <h3>Bulk & Exception Handling (Team)</h3>
+
+            <input
+              className="input"
+              type="date"
+              value={bulkDate}
+              onChange={e => setBulkDate(e.target.value)}
+            />
+
+            <div className="meal-grid">
+              {allMeals.map(meal => (
+                <label key={meal} className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={bulkMeals.includes(meal)}
+                    onChange={() => toggleBulkMeal(meal)}
+                  />
+                  {meal}
+                </label>
               ))}
             </div>
-          )}
-        </div>
-      )}
 
-      <button className="btn danger logout" onClick={logout}>
-        Logout
-      </button>
+            <div style={{ marginTop: "12px" }}>
+              <button
+                className="btn warning"
+                onClick={bulkOptOut}
+                disabled={bulkLoading}
+              >
+                Bulk Opt-Out
+              </button>
+
+              <button
+                className="btn primary"
+                onClick={bulkOptIn}
+                disabled={bulkLoading}
+                style={{ marginLeft: "10px" }}
+              >
+                Bulk Opt-In
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ================= ADMIN BULK HANDLING (EVERYONE) ================= */}
+        {role === "admin" && (
+          <div className="section">
+            <h3>Admin Bulk & Exception Handling (All Employees)</h3>
+
+            <input
+              className="input"
+              type="date"
+              value={adminBulkDate}
+              onChange={e => setAdminBulkDate(e.target.value)}
+            />
+
+            <div className="meal-grid">
+              {allMeals.map(meal => (
+                <label key={meal} className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={adminBulkMeals.includes(meal)}
+                    onChange={() => toggleAdminBulkMeal(meal)}
+                  />
+                  {meal}
+                </label>
+              ))}
+            </div>
+
+            <div style={{ marginTop: "12px" }}>
+              <button
+                className="btn warning"
+                onClick={adminBulkOptOut}
+                disabled={adminBulkLoading}
+              >
+                Opt-Out For Everyone
+              </button>
+
+              <button
+                className="btn primary"
+                onClick={adminBulkOptIn}
+                disabled={adminBulkLoading}
+                style={{ marginLeft: "10px" }}
+              >
+                Opt-In For Everyone
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ================= SPECIAL DAY CONTROLS ================= */}
+        {role === "admin" && (
+          <div className="section">
+            <h3>Special Day Controls</h3>
+
+            <input
+              className="input"
+              type="date"
+              value={specialDate}
+              onChange={e => setSpecialDate(e.target.value)}
+            />
+
+            <select
+              className="input"
+              value={specialType}
+              onChange={e => setSpecialType(e.target.value)}
+            >
+              <option value="office_closed">Office Closed</option>
+              <option value="government_holiday">Government Holiday</option>
+              <option value="special_celebration">
+                Special Celebration Day
+              </option>
+            </select>
+
+            {specialType === "special_celebration" && (
+              <input
+                className="input"
+                placeholder="Celebration note"
+                value={specialNote}
+                onChange={e => setSpecialNote(e.target.value)}
+              />
+            )}
+
+            <div style={{ marginTop: "10px" }}>
+              <button className="btn primary" onClick={setSpecialDay}>
+                Save
+              </button>
+
+              <button
+                className="btn secondary"
+                onClick={fetchDayStatus}
+                style={{ marginLeft: "10px" }}
+              >
+                Check Status
+              </button>
+
+              <button
+                className="btn danger"
+                onClick={removeSpecialDay}
+                style={{ marginLeft: "10px" }}
+              >
+                Remove
+              </button>
+            </div>
+
+            {currentDayStatus && (
+              <div style={{ marginTop: "15px" }}>
+                <strong>Current Status:</strong>
+                <p>Type: {currentDayStatus.type}</p>
+                {currentDayStatus.note && (
+                  <p>Note: {currentDayStatus.note}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {role === "employee" && (
+          <div className="section">
+            <h3>Work Location Per Date</h3>
+
+            <input
+              className="input"
+              type="date"
+              value={workDate}
+              onChange={e => {
+                setWorkDate(e.target.value);
+                setWorkMessage("");
+              }}
+              min={getMinDate()}
+              max={getMaxDate()}
+            />
+
+            {workDate && (
+              <>
+                <div style={{ marginTop: "10px" }}>
+                  <label className="radio">
+                    <input
+                      type="radio"
+                      value="Office"
+                      checked={workLocation === "Office"}
+                      onChange={() => setWorkLocation("Office")}
+                      disabled={isPastCutoff(workDate)}
+                    />
+                    Office
+                  </label>
+
+                  <label className="radio" style={{ marginLeft: "20px" }}>
+                    <input
+                      type="radio"
+                      value="WFH"
+                      checked={workLocation === "WFH"}
+                      onChange={() => setWorkLocation("WFH")}
+                      disabled={isPastCutoff(workDate)}
+                    />
+                    WFH
+                  </label>
+                </div>
+
+                {isPastCutoff(workDate) && (
+                  <p style={{ color: "red", marginTop: "8px" }}>
+                    Cutoff time (9 PM previous day) has passed.
+                  </p>
+                )}
+
+                <button
+                  className="btn primary"
+                  style={{ marginTop: "12px" }}
+                  onClick={saveWorkLocation}
+                  disabled={isPastCutoff(workDate) || workLoading}
+                >
+                  {workLoading ? "Saving..." : "Save Work Location"}
+                </button>
+
+                {workMessage && (
+                  <p style={{ marginTop: "8px", color: "green" }}>
+                    {workMessage}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ================= TEAM LEAD WORK LOCATION ================= */}
+        {role === "teamlead" && (
+          <div className="section">
+            <h3>My Work Location</h3>
+
+            <input
+              className="input"
+              type="date"
+              value={leadWorkDate}
+              onChange={e => {
+                setLeadWorkDate(e.target.value);
+                setLeadWorkMessage("");
+              }}
+              min={getMinDate()}
+              max={getMaxDate()}
+            />
+
+            {leadWorkDate && (
+              <>
+                <div style={{ marginTop: "10px" }}>
+                  <label>
+                    <input
+                      type="radio"
+                      checked={leadWorkLocation === "Office"}
+                      onChange={() => setLeadWorkLocation("Office")}
+                      disabled={isPastCutoff(leadWorkDate)}
+                    />
+                    Office
+                  </label>
+
+                  <label style={{ marginLeft: "20px" }}>
+                    <input
+                      type="radio"
+                      checked={leadWorkLocation === "WFH"}
+                      onChange={() => setLeadWorkLocation("WFH")}
+                      disabled={isPastCutoff(leadWorkDate)}
+                    />
+                    WFH
+                  </label>
+                </div>
+
+                {isPastCutoff(leadWorkDate) && (
+                  <p style={{ color: "red" }}>
+                    Cutoff (9 PM previous day) passed.
+                  </p>
+                )}
+
+                <button
+                  className="btn primary"
+                  onClick={saveLeadWorkLocation}
+                  disabled={isPastCutoff(leadWorkDate) || leadWorkLoading}
+                  style={{ marginTop: "10px" }}
+                >
+                  Save
+                </button>
+
+                {leadWorkMessage && (
+                  <p style={{ color: "green" }}>{leadWorkMessage}</p>
+                )}
+              </>
+            )}
+
+            <hr style={{ margin: "25px 0" }} />
+
+            <h3>Team Member Work Location</h3>
+
+            <input
+              className="input"
+              placeholder="Member Username"
+              value={memberUsername}
+              onChange={e => setMemberUsername(e.target.value)}
+            />
+
+            <input
+              className="input"
+              type="date"
+              value={memberDate}
+              onChange={e => setMemberDate(e.target.value)}
+              min={getMinDate()}
+              max={getMaxDate()}
+            />
+
+            <button
+              className="btn secondary"
+              onClick={fetchMemberWorkLocation}
+            >
+              Load
+            </button>
+            {memberLoadedText && (
+              <p style={{ marginTop: "10px", color: "blue" }}>{memberLoadedText}</p>
+            )}
+            {memberDate && memberUsername && (
+              <>
+                <div style={{ marginTop: "15px" }}>
+                  <label>
+                    <input
+                      type="radio"
+                      checked={memberLocation === "Office"}
+                      onChange={() => setMemberLocation("Office")}
+                    />
+                    Office
+                  </label>
+
+                  <label style={{ marginLeft: "20px" }}>
+                    <input
+                      type="radio"
+                      checked={memberLocation === "WFH"}
+                      onChange={() => setMemberLocation("WFH")}
+                    />
+                    WFH
+                  </label>
+                </div>
+
+                <button
+                  className="btn warning"
+                  onClick={updateMemberWorkLocation}
+                  disabled={memberLoading}
+                  style={{ marginTop: "10px" }}
+                >
+                  Update Member
+                </button>
+
+                {memberMessage && (
+                  <p style={{ color: "green" }}>{memberMessage}</p>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ================= ADMIN WORK LOCATION ================= */}
+        {role === "admin" && (
+          <div className="section">
+            <h3>My Work Location</h3>
+            <input
+              type="date"
+              className="input"
+              value={adminWorkDate}
+              onChange={e => {
+                setAdminWorkDate(e.target.value);
+                setAdminWorkMessage("");
+                fetchAdminWorkLocation(e.target.value);
+              }}
+              min={getMinDate()}
+              max={getMaxDate()}
+            />
+
+            {adminWorkDate && (
+              <>
+                <div style={{ marginTop: "10px" }}>
+                  <label>
+                    <input
+                      type="radio"
+                      checked={adminWorkLocation === "Office"}
+                      onChange={() => setAdminWorkLocation("Office")}
+                      disabled={isPastCutoff(adminWorkDate)}
+                    /> Office
+                  </label>
+                  <label style={{ marginLeft: "20px" }}>
+                    <input
+                      type="radio"
+                      checked={adminWorkLocation === "WFH"}
+                      onChange={() => setAdminWorkLocation("WFH")}
+                      disabled={isPastCutoff(adminWorkDate)}
+                    /> WFH
+                  </label>
+                </div>
+
+                <button
+                  className="btn primary"
+                  style={{ marginTop: "10px" }}
+                  onClick={saveAdminWorkLocation}
+                  disabled={isPastCutoff(adminWorkDate) || adminWorkLoading}
+                >
+                  {adminWorkLoading ? "Saving..." : "Save"}
+                </button>
+
+                {adminWorkMessage && <p style={{ color: "green" }}>{adminWorkMessage}</p>}
+              </>
+            )}
+
+            <hr style={{ margin: "25px 0" }} />
+
+            <h3>Member Work Location</h3>
+            <input
+              placeholder="Member Username"
+              className="input"
+              value={adminMemberUsername}
+              onChange={e => setAdminMemberUsername(e.target.value)}
+            />
+            <input
+              type="date"
+              className="input"
+              value={adminMemberDate}
+              onChange={e => setAdminMemberDate(e.target.value)}
+              min={getMinDate()}
+              max={getMaxDate()}
+            />
+
+            <button className="btn secondary" onClick={fetchAdminMemberWorkLocation}>
+              Load
+            </button>
+
+            {adminMemberLoadedText && <p style={{ marginTop: "10px", color: "blue" }}>{adminMemberLoadedText}</p>}
+
+            {adminMemberDate && adminMemberUsername && (
+              <>
+                <div style={{ marginTop: "15px" }}>
+                  <label>
+                    <input
+                      type="radio"
+                      checked={adminMemberLocation === "Office"}
+                      onChange={() => setAdminMemberLocation("Office")}
+                    /> Office
+                  </label>
+                  <label style={{ marginLeft: "20px" }}>
+                    <input
+                      type="radio"
+                      checked={adminMemberLocation === "WFH"}
+                      onChange={() => setAdminMemberLocation("WFH")}
+                    /> WFH
+                  </label>
+                </div>
+
+                <button
+                  className="btn warning"
+                  onClick={updateAdminMemberWorkLocation}
+                  disabled={adminMemberLoading}
+                  style={{ marginTop: "10px" }}
+                >
+                  Update Member
+                </button>
+
+                {adminMemberMessage && <p style={{ color: "green" }}>{adminMemberMessage}</p>}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ================= ANNOUNCEMENT ================= */}
+        {role === "admin" && (
+          <div className="section">
+            <h3>Generate Announcement</h3>
+
+            <input
+              type="date"
+              className="input"
+              value={announcementDate}
+              onChange={e => setAnnouncementDate(e.target.value)}
+            />
+
+            <button className="btn primary" onClick={fetchAnnouncement} style={{ marginTop: "10px" }}>
+              Generate Announcement
+            </button>
+
+            {announcementMsg && (
+              <div style={{ marginTop: "15px" }}>
+                <textarea
+                  className="input"
+                  value={announcementMsg}
+                  readOnly
+                  rows={10}
+                />
+                <button className="btn secondary" onClick={copyAnnouncement} style={{ marginTop: "10px" }}>
+                  Copy to Clipboard
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        {/* ================= COMPANY-WIDE WFH ================= */}
+        {role === "admin" && (
+          <div className="section">
+            <h3>Company-wide WFH Period</h3>
+
+            <input
+              type="date"
+              className="input"
+              value={companyWFHStart}
+              onChange={e => setCompanyWFHStart(e.target.value)}
+            />
+
+            <input
+              type="date"
+              className="input"
+              value={companyWFHEnd}
+              onChange={e => setCompanyWFHEnd(e.target.value)}
+              style={{ marginTop: "10px" }}
+            />
+
+            <input
+              className="input"
+              placeholder="Optional note"
+              value={companyWFHNote}
+              onChange={e => setCompanyWFHNote(e.target.value)}
+              style={{ marginTop: "10px" }}
+            />
+
+            <button
+              className="btn primary"
+              style={{ marginTop: "12px" }}
+              onClick={applyCompanyWFH}
+              disabled={companyWFHLoading}
+            >
+              {companyWFHLoading ? "Applying..." : "Apply Company WFH"}
+            </button>
+
+            {companyWFHMessage && (
+              <p style={{ marginTop: "10px", color: "green" }}>
+                {companyWFHMessage}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* AUDIT LOGS SECTION */}
+        {role === "admin" && (
+          <div className="section">
+            <h3>Audit Log Viewer</h3>
+            <button className="btn primary" onClick={fetchAuditLogs} disabled={auditLoading}>
+              {auditLoading ? "Loading..." : "Load Audit Logs"}
+            </button>
+
+            {auditLogs.length > 0 && (
+              <div style={{ marginTop: "15px" }}>
+                {auditLogs.map((log, idx) => (
+                  <div key={idx} style={{ borderBottom: "1px solid #ddd", padding: "10px 0" }}>
+                    <strong>{log.action}</strong> - {log.actor} ({log.actor_role})
+                    <br />
+                    <small>Target: {log.target_user} | Date: {log.target_date}</small>
+                    <br />
+                    <small>Time: {new Date(log.timestamp).toLocaleString()}</small>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+
+
+
+        <button className="btn danger logout" onClick={logout}>
+          Logout
+        </button>
+      </div>
     </div>
-  </div>
-);
-
+  );
 }

@@ -1,38 +1,45 @@
 [
   {
     "username": "admin1",
-    "date": "2026-02-12",
+    "date": "2026-02-25",
     "meals": [
       "Lunch",
-      "Snacks",
-      "Iftar"
-    ]
-  },
-  {
-    "username": "employee101",
-    "date": "2026-02-12",
-    "meals": [
-      "Lunch"
-    ]
-  },
-  {
-    "username": "employee101",
-    "date": "2026-02-13",
-    "meals": [
-      "Lunch",
-      "Snacks",
-      "Iftar",
       "Event Dinner",
       "Optional Dinner"
     ]
   },
   {
-    "username": "admin1",
-    "date": "2026-02-13",
+    "username": "teamLead101",
+    "date": "2026-02-25",
     "meals": [
       "Lunch",
-      "Snacks",
-      "Iftar",
+      "Event Dinner",
+      "Optional Dinner"
+    ]
+  },
+  {
+    "username": "employee101",
+    "date": "2026-02-25",
+    "meals": [
+      "Lunch",
+      "Event Dinner",
+      "Optional Dinner"
+    ]
+  },
+  {
+    "username": "employee102",
+    "date": "2026-02-25",
+    "meals": [
+      "Lunch",
+      "Event Dinner",
+      "Optional Dinner"
+    ]
+  },
+  {
+    "username": "employee201",
+    "date": "2026-02-25",
+    "meals": [
+      "Lunch",
       "Event Dinner",
       "Optional Dinner"
     ]

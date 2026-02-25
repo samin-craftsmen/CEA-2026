@@ -1,32 +1,53 @@
-# Description
+Closes #36
 
-Implemented the Iteration 1 features according to the requirements.
+## Dependencies
 
-Fixes #2 
+- Merge PR #35
 
----
+## What does this PR do?
+
+- Enhances reporting capabilities to provide detailed meal participation headcount breakdowns for better planning and logistics.
 
 ## Type of Change
 
-- Implementation of features
+- [x] New feature
 
----
+## What was changed
 
-## What’s Changed
+- Headcount totals available by:
+  - **Meal type**
+  - **Team**
+  - **Overall total**
+  - **Office vs WFH split**
 
-- Implemented features of iteration 1 according to the requirement
+- Accessible to:
+  - **Admin**
 
----
+## Changelog
 
-## How Has This Been Tested?
+- Feature: Improved Headcount Reporting
 
-- Manual testing
 
+
+## How to Test
+
+1. Manual Testing
+2. Integration Testing
+
+## How QA Should Test
+
+- Log in as admin.
+- Check headcount totals by different tags.
+
+## Rollback Plan
+
+- Revert this PR
 
 ## Checklist
 
-- [ ] User can log in and has access to pages/features based on their roles
-- [ ] Admin and team lead can modify team members meals
-- [ ] Admin can see meal headcount for a specific day
-- [ ] Meals are opted in by default
-- [ ] Admin can add meal items which are visible for others
+- [x] All requirements have been met
+- [x] All tests pass
+
+## Note for Reviewer
+
+- Frontend has been implemented
