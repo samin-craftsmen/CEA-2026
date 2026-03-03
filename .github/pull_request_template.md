@@ -1,25 +1,26 @@
-Closes #41
+Closes #51
 
 ## Dependencies
 
-- None
+- Merge PR #50
 
 ## What does this PR do?
 
-- Proposes TDD for system level design and feature 1: Employee Only Meal Management.
+- Initializes project 
 
 ## Type of Change
 
-- [x] Documentation
+- [x] Feature
 
 ## What was changed
 
-- Added TDD
-- Restructured folders
+- Initialized the project by breaking the project into multiple sections which handle task separately. 
+- Added initial dependencies for database and routing.
+- Added access to dynamoDB locally.
 
 ## Changelog
 
-- Documentation: System level and Feature Level TDD added.
+- Feature: Initialize the project.
 
 ## How to Test
 
@@ -39,4 +40,4 @@ Closes #41
 
 ## Note for Reviewer
 
-- Design has been created with cloud environment in mind but for the iteration 1, it will be implemented locally
+- N/A
