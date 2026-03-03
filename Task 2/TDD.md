@@ -33,3 +33,31 @@ Currently, meal participation is managed manually(Excel Based System). This lead
 - No clear visibility for administrators
 
 The system aims to provide a centralized platform to manage meal participation and work locations while ensuring role-based access control and enforcing operational rules such as cutoff times and holiday restrictions.
+
+## 3. High Level Architecture
+
+#### Employee Interaction Flow
+
+Discord User  
+↓  
+Discord Bot (Slash Commands / Interactions)  
+↓   
+API Gateway  
+↓  
+AWS Lambda (Business Logic)  
+↓  
+DynamoDB (Single Table Design)
+
+#### Administrator Interaction Flow  
+↓  
+Admin User  
+↓   
+React Web Dashboard  
+↓  
+API Gateway  
+↓  
+Lambda Functions
+↓
+DynamoDB
+
+
