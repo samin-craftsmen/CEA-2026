@@ -247,3 +247,39 @@ Stored in **single DynamoDB table (`MHP`)** with PK/SK prefixes: `USER#<id>`, `M
 3. **Day validation**
    - `Query PK=DAY#<date> SK=META`
 
+## User Flows
+
+### Opt-In / Opt-Out
+
+1. User runs `/meal set`
+2. Bot collects:
+   - Date
+   - Meal Type
+   - YES/NO
+3. Lambda:
+   - Validate role = EMPLOYEE
+   - Check DAY table for closure
+   - Check cutoff time
+   - Update record
+4. Bot confirms action
+
+**PK:** `MEAL#<date>`  
+**SK:** begins_with `USER#<userId>#<mealType>`
+
+### View Status
+
+1. User runs `/meal view`
+2. Lambda queries:
+
+**PK:** `MEAL#<date>`  
+**SK:** begins_with `USER#<userId>`
+
+
+3. Bot returns status
+
+## Validations
+
+- Closed day → reject
+- After cutoff → reject
+- Duplicate → overwrite
+---
