@@ -201,3 +201,49 @@ All features share:
 ---
 
 
+# 2. Feature-Level Designs
+
+---
+
+# Feature 1: Employee Meal Management
+
+## Overview
+
+Allows employees to manage meal participation. Limited to employee actions only.
+- Employees can:
+  - Select a date.
+  - Select meal type.
+  - Mark meal participation (Yes/No).
+  - View their current meal status for a selected date.
+- Updates should reflect immediately in the system.
+- The system should validate:
+  - Date selection (no invalid dates such as office closed).
+  - Duplicate updates (latest update overwrites previous one).
+  - Update restrictions (such as no update after cutoff time).
+  - Role based access.
+
+## Entities
+
+| Entity                 | Attributes (for this feature)                                            | Purpose                                                     |
+| ---------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| **User**               | `role`, `teamId`                                                         | Validate role (EMPLOYEE) and team for internal Lambda logic |
+| **Meal Participation** | `participation` (YES/NO)                                                 | Core data for marking and tracking meals                    |
+| **Day Configuration**  | `type` (GOV HOLIDAY/CLOSED/EVENT)                                        | Used for read-only validation of date before update         |
+| **Team (via GSI)**     | `teamId`, `name`, `leadId`, `description`, `additionalMetadata`          | Supports team-level queries for Team Leads/Admins           |
+
+### Note: Team entity is not needed for feature 1 yet. Only shown for documentation as to show how User and Team entities will be connected. It is not needed as only admin/team lead can do team wise operations. 
+
+Stored in **single DynamoDB table (`MHP`)** with PK/SK prefixes: `USER#<id>`, `MEAL#<date>`, `DAY#<date>`
+
+## Access Patterns & Queries
+
+1. **View own meals**
+   - `Query PK=MEAL#<date> SK begins_with USER#<userId>`
+
+2. **Update own meals**
+   - `PutItem PK=MEAL#<date> SK=USER#<userId>#<mealType>`
+   - Lambda validates role, cutoff, closed day
+
+3. **Day validation**
+   - `Query PK=DAY#<date> SK=META`
+
