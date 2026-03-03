@@ -139,8 +139,65 @@ The DynamoDB schema is designed based on the following primary access patterns:
 6. Get day configuration for a specific date
 7. Update meal participation for a user
 
-### Note: Access pattern can be modified based on new features based on which this will be updated. Also how these access patterns are executed is explained on feature level design.
+### Note: Access pattern can be modified based on new features based on which this will be updated. Also how these access patterns are executed is explained on feature level design. For feature one we will only need to deal with employees(only) meal participation.
+
 ---
 
+## 1.5 Role Implementation 
+
+### Role-Based Access Control
+
+The system implements role-based access control using the USER entity.
+
+#### Roles
+
+EMPLOYEE  
+TEAM_LEAD  
+ADMIN  
+
+#### Role Storage
+
+User role information is stored in DynamoDB.
+
+Example Item
+
+PK: USER#123  
+SK: META  
+
+Attributes:
+
+role: EMPLOYEE  
+teamId: TEAM#10
+
+#### Authorization Enforcement
+
+All Lambda handlers perform role validation before executing operations.
+
+Examples:
+
+Employee operations:
+- Only allow access to their own meal or location records.
+
+Team Lead operations:
+- Can modify records for users belonging to the same team.
+
+Admin operations:
+- Can modify any record in the system.
+
+Authorization checks occur in Lambda before database operations.
+
+#### Note: For iteration 1 lambda is not used. It will be built in interation 2.
+
+## 1.6 Cross-Cutting Rules
+
+All features share:
+
+- Date validation (no office-closed updates)
+- Cutoff validation
+- Role-based access control
+- Last-write-wins strategy
+- Strongly consistent reads when required
+
+---
 
 
