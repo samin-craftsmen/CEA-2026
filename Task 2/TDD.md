@@ -61,3 +61,36 @@ Lambda Functions
 DynamoDB
 
 
+### Components
+
+#### Discord Bot
+- Handles slash commands
+- Sends interaction payloads to API Gateway
+- Displays formatted responses
+
+#### API Gateway
+- Public endpoint for Discord interactions
+- Verifies Discord signatures
+- Routes to Lambda
+
+#### AWS Lambda
+- Stateless business logic
+- Role validation
+- Cutoff validation
+- Team-based access validation
+- Reads/writes to DynamoDB
+
+#### DynamoDB
+- Stores users, teams, meals, work locations, special days
+- Uses single-table design for scalability
+
+#### React Admin Dashboard
+
+The web dashboard provides administrative capabilities.
+
+- Day management (holidays/events/office closed)
+- Meal reports
+- Employee management
+- Bulk updates
+
+The dashboard communicates with backend APIs exposed via API Gateway.
