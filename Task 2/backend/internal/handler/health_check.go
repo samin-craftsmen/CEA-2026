@@ -1,13 +1,17 @@
 package handlers
 
 import (
-    "net/http"
+	"net/http"
 
-    "github.com/gin-gonic/gin"
+	"github.com/aws/aws-lambda-go/events"
 )
 
-func HealthCheck(c *gin.Context) {
-    c.JSON(http.StatusOK, gin.H{
-        "status": "healthy",
-    })
+func HealthCheck(_ events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Headers: map[string]string{
+			"Content-Type": "application/json",
+		},
+		Body: `{"status":"healthy"}`,
+	}, nil
 }
