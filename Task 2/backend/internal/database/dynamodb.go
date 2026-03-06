@@ -19,28 +19,22 @@ var (
 // InitDynamoDB initializes the DynamoDB client
 func InitDynamoDB(cfg *config.Config) error {
 	TableName = cfg.DynamoDBTable
-	/*
-		1. For local DynamoDB, you must provide the endpoint (http://localhost:8000).
-		2. If you want to use AWS DynamoDB in the cloud, you don’t need to set the Endpoint, or you can leave it empty ("").
-	*/
+
+	awsConfig := &aws.Config{
+		Region: aws.String(cfg.DynamoDBRegion),
+	}
+	if cfg.DynamoDBEndpoint != "" {
+		awsConfig.Endpoint = aws.String(cfg.DynamoDBEndpoint)
+	}
+
 	// Create AWS session
-	sess, err := session.NewSession(&aws.Config{
-		Region:   aws.String(cfg.DynamoDBRegion),
-		Endpoint: aws.String(cfg.DynamoDBEndpoint), // For local DynamoDB
-	})
+	sess, err := session.NewSession(awsConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create AWS session: %w", err)
 	}
 
 	// Create DynamoDB client
 	DBClient = dynamodb.New(sess)
-
-	// Optional: check connection by listing tables
-	_, err = DBClient.ListTables(&dynamodb.ListTablesInput{})
-	if err != nil {
-		return fmt.Errorf("failed to list tables: %w", err)
-	}
-
 	fmt.Println("DynamoDB initialized successfully")
 	return nil
 }
