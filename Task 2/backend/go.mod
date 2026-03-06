@@ -3,6 +3,7 @@ module github.com/samin-craftsmen/meal-headcount-planner-backend
 go 1.25.6
 
 require (
+	github.com/aws/aws-lambda-go v1.53.0
 	github.com/aws/aws-sdk-go v1.55.8
 	github.com/gin-gonic/gin v1.10.0
 )

@@ -1,11 +1,10 @@
 package routes
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/aws/aws-lambda-go/events"
 )
 
 // SetupRoutes configures all API routes
-func SetupRoutes(router *gin.Engine) {
-	// Health check endpoint
-    router.GET("/health", handlers.HealthCheck)
+func HandleRequest(req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	return events.APIGatewayProxyResponse{}, nil
 }
