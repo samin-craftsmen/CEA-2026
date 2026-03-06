@@ -18,7 +18,7 @@ func LoadConfig() *Config {
 		GinMode:          getEnv("GIN_MODE", "debug"),
 		DynamoDBEndpoint: getEnv("DYNAMODB_ENDPOINT", ""),
 		DynamoDBRegion:   getEnv("DYNAMODB_REGION", "us-east-1"),
-		DynamoDBTable:    getEnv("DYNAMODB_TABLE", "meal-headcount"),
+		DynamoDBTable:    getEnv("DYNAMODB_TABLE", "MHP"),
 	}
 }
 
