@@ -17,8 +17,8 @@ func LoadConfig() *Config {
 		Port:             getEnv("PORT", "8080"),
 		GinMode:          getEnv("GIN_MODE", "debug"),
 		DynamoDBEndpoint: getEnv("DYNAMODB_ENDPOINT", ""),
-		DynamoDBRegion:   getEnv("DYNAMODB_REGION", "us-east-1"),
-		DynamoDBTable:    getEnv("DYNAMODB_TABLE", "MHP"),
+		DynamoDBRegion:   getEnv("DYNAMODB_REGION", "ap-south-1"),
+		DynamoDBTable:    getEnv("DYNAMODB_TABLE", "trainee-2026-samin-dynamoDB-mhp"),
 	}
 }
 
