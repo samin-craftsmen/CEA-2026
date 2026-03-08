@@ -5,59 +5,39 @@ This backend is deployed as a serverless API using:
 - AWS Lambda (Go custom runtime)
 - AWS DynamoDB
 
+---
+
 ## Prerequisites
 - AWS CLI configured (`aws configure`)
-- AWS SAM CLI installed
 - Go installed
+- PowerShell or shell environment for building and zipping Go binaries
+
+---
 
 ## Deploy to AWS
-From project root:
 
-```bash
-sam build
-sam deploy --guided
+Each Lambda function is built and zipped separately. Example for the `health-lambda`:
+
+```cmd
+cd health-lambda
+set GOOS=linux
+set GOARCH=amd64
+go build -o bootstrap
+powershell Compress-Archive -Path bootstrap -DestinationPath function.zip -
+
 ```
 
-Recommended answers for first deploy:
-- Stack Name: `meal-headcount-backend`
-- AWS Region: your target region (e.g. `us-east-1`)
-- Confirm changes before deploy: `Y`
-- Allow SAM CLI IAM role creation: `Y`
-- Save arguments to configuration file: `Y`
+## Test
 
-For subsequent deploys:
+### 1. Health Check
 
-```bash
-sam build
-sam deploy
+```cmd
+
+curl https://pr807w8a23.execute-api.ap-south-1.amazonaws.com/default/health
+
 ```
 
-## Test after Deployment
-### 1) Get deployed endpoint outputs
-
-```bash
-aws cloudformation describe-stacks \
-  --stack-name meal-headcount-backend \
-  --query "Stacks[0].Outputs"
+Expected Response:
 ```
-
-Copy `HealthEndpoint` value.
-
-### 2) Verify health endpoint
-
-```bash
-curl <HealthEndpoint>
+OK
 ```
-
-Expected response:
-
-```json
-{"status":"healthy"}
-```
-
-### 3) API Gateway live check (optional)
-Open `<HealthEndpoint>` in browser and confirm HTTP 200 response.
-
-## Notes for local development
-- `DYNAMODB_ENDPOINT` can be set for local DynamoDB.
-- In AWS deployment, `DYNAMODB_ENDPOINT` is left empty by default.
