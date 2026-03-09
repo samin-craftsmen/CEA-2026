@@ -33,8 +33,10 @@ func InitDynamoDB(cfg *config.Config) error {
 		return fmt.Errorf("failed to create AWS session: %w", err)
 	}
 
-	// Create DynamoDB client
-	DBClient = dynamodb.New(sess)
+	// Create DynamoDB client. initialize only if not already set
+	if DBClient == nil {
+		DBClient = dynamodb.New(sess)
+	}
 	fmt.Println("DynamoDB initialized successfully")
 	return nil
 }
