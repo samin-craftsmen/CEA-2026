@@ -29,27 +29,34 @@ powershell Compress-Archive -Path bootstrap -DestinationPath function.zip -Force
 
 ## Test
 
-### 1. Health Check
 
-```cmd
+### 1. View Meal Participation
 
-curl https://pr807w8a23.execute-api.ap-south-1.amazonaws.com/default/health
+#### via discord bot ->
 
+- Use the `/meal view {date}` Discord slash command to check meal participation status for a specific date.
+
+**Command format:**
+```
+ /meal view date:YYYY-MM-DD
+```
+**Example:**
+```
+/meal view date:2026-03-10
 ```
 
-Expected Response:
-
+**Expected Response:**
 ```
-OK
+{"date":"2026-03-10","meals":{"lunch":"YES","snacks":"YES"},"user_id":"your_discord_id"}
 ```
 
-### 2. View Meal Participation
+#### via direct api call ->
 
 ```cmd
 
 curl -X POST https://pr807w8a23.execute-api.ap-south-1.amazonaws.com/default/meal/participation/view ^
-More?   -H "Content-Type: application/json" ^
-More?   -d "{\"discord_id\": \"your_discord_id\"}"
+  -H "Content-Type: application/json" ^
+  -d "{\"discord_id\": \"your_discord_id\", \"date\": \"2026-03-10\"}"
 
 ```
 
