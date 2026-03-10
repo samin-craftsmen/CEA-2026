@@ -18,17 +18,28 @@ func HandleMeal(data *types.CommandData, userID string) *types.InteractionRespon
 		return types.ErrorResponse("Please provide a subcommand. Usage: `/meal view`")
 	}
 
-	sub := data.Options[0].Name
-	switch sub {
+	sub := data.Options[0]
+	switch sub.Name {
 	case "view":
-		return handleMealView(userID)
+		// sub.Options[0] is the "date" string option
+		date := ""
+		if len(sub.Options) > 0 {
+			if v, ok := sub.Options[0].Value.(string); ok {
+				date = v
+			}
+		}
+		if date == "" {
+			return types.ErrorResponse("Please provide a date. Usage: `/meal view YYYY-MM-DD`")
+		}
+		return handleMealView(userID, date)
 	default:
-		return types.ErrorResponse(fmt.Sprintf("Unknown subcommand: `%s`", sub))
+		return types.ErrorResponse(fmt.Sprintf("Unknown subcommand: `%s`", sub.Name))
 	}
 }
 
 type mealViewRequest struct {
 	DiscordID string `json:"discord_id"`
+	Date      string `json:"date"`
 }
 
 type mealViewResponse struct {
@@ -37,9 +48,9 @@ type mealViewResponse struct {
 	UserID string            `json:"user_id"`
 }
 
-func handleMealView(userID string) *types.InteractionResponse {
+func handleMealView(userID string, date string) *types.InteractionResponse {
 	var result mealViewResponse
-	err := client.Post("/meal/participation/view", mealViewRequest{DiscordID: userID}, &result)
+	err := client.Post("/meal/participation/view", mealViewRequest{DiscordID: userID, Date: date}, &result)
 	if err != nil {
 		return types.ErrorResponse("Failed to fetch meal participation: " + err.Error())
 	}
@@ -58,7 +69,7 @@ func handleMealView(userID string) *types.InteractionResponse {
 	}
 
 	return types.EmbedResponse(types.Embed{
-		Title:  "🍽️ Meal Participation — " + result.Date,
+		Title:  "Meal Participation — " + result.Date,
 		Color:  types.ColorSuccess,
 		Fields: fields,
 		Footer: &types.EmbedFooter{Text: "User: " + result.UserID},

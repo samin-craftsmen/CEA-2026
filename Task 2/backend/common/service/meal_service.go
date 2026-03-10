@@ -1,8 +1,6 @@
 package service
 
 import (
-	"time"
-
 	"github.com/samin-craftsmen/meal-headcount-planner-backend/common/repository"
 )
 
@@ -12,14 +10,12 @@ type MealViewResponse struct {
 	UserID string            `json:"user_id"`
 }
 
-func GetMealView(discordID string) (*MealViewResponse, error) {
+func GetMealView(discordID string, date string) (*MealViewResponse, error) {
 	if err := repository.EnsureUserExists(discordID); err != nil {
 		return nil, err
 	}
 
-	tomorrow := time.Now().Add(24 * time.Hour).Format("2006-01-02")
-
-	meals, err := repository.GetUserMeals(discordID, tomorrow)
+	meals, err := repository.GetUserMeals(discordID, date)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +29,7 @@ func GetMealView(discordID string) (*MealViewResponse, error) {
 	}
 
 	return &MealViewResponse{
-		Date:   tomorrow,
+		Date:   date,
 		Meals:  result,
 		UserID: discordID,
 	}, nil

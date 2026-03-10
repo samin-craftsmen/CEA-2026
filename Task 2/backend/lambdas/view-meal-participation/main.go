@@ -13,15 +13,16 @@ import (
 
 type MealViewRequest struct {
 	DiscordID string `json:"discord_id"`
+	Date      string `json:"date"`
 }
 
 func ViewMealParticipationHandler(request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 	var req MealViewRequest
-	if err := json.Unmarshal([]byte(request.Body), &req); err != nil || req.DiscordID == "" {
+	if err := json.Unmarshal([]byte(request.Body), &req); err != nil || req.DiscordID == "" || req.Date == "" {
 		return jsonResponse(http.StatusBadRequest, map[string]string{"error": "invalid request"}), nil
 	}
 
-	result, err := service.GetMealView(req.DiscordID)
+	result, err := service.GetMealView(req.DiscordID, req.Date)
 	if err != nil {
 		return jsonResponse(http.StatusInternalServerError, map[string]string{"error": err.Error()}), nil
 	}

@@ -27,8 +27,16 @@ func Definitions() []SlashCommandDefinition {
 			Options: []SlashCommandOption{
 				{
 					Name:        "view",
-					Description: "View your meal participation for tomorrow",
+					Description: "View your meal participation for a specific date",
 					Type:        1, // SUB_COMMAND
+					Options: []SlashCommandOption{
+						{
+							Name:        "date",
+							Description: "Date in YYYY-MM-DD format (e.g. 2026-03-15)",
+							Type:        3, // STRING
+							Required:    true,
+						},
+					},
 				},
 			},
 		},

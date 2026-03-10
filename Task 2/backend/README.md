@@ -23,7 +23,7 @@ cd health-lambda
 set GOOS=linux
 set GOARCH=amd64
 go build -o bootstrap
-powershell Compress-Archive -Path bootstrap -DestinationPath function.zip 
+powershell Compress-Archive -Path bootstrap -DestinationPath function.zip -Force
 
 ```
 
