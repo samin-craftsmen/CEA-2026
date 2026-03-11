@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/samin-craftsmen/meal-headcount-planner-backend/common/database"
@@ -67,4 +69,42 @@ func GetUserMeals(userID string, date string) (map[string]string, error) {
 		}
 	}
 	return result, nil
+}
+
+func GetUserRole(discordID string) (string, error) {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	result, err := db.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String(table),
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {S: aws.String("USER#" + discordID)},
+			"SK": {S: aws.String("META")},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if result.Item == nil {
+		return "", fmt.Errorf("user not found")
+	}
+	if v, ok := result.Item["role"]; ok && v.S != nil {
+		return *v.S, nil
+	}
+	return "", fmt.Errorf("role not found for user")
+}
+
+func SetMealParticipation(userID, date, mealType, status string) error {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	_, err := db.PutItem(&dynamodb.PutItemInput{
+		TableName: aws.String(table),
+		Item: map[string]*dynamodb.AttributeValue{
+			"PK":            {S: aws.String("MEAL#" + date)},
+			"SK":            {S: aws.String("USER#" + userID + "#" + mealType)},
+			"participation": {S: aws.String(status)},
+		},
+	})
+	return err
 }
