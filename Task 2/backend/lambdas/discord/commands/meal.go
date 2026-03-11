@@ -32,6 +32,24 @@ func HandleMeal(data *types.CommandData, userID string) *types.InteractionRespon
 			return types.ErrorResponse("Please provide a date. Usage: `/meal view YYYY-MM-DD`")
 		}
 		return handleMealView(userID, date)
+	case "set":
+		var date, mealType, status string
+		for _, opt := range sub.Options {
+			if v, ok := opt.Value.(string); ok {
+				switch opt.Name {
+				case "date":
+					date = v
+				case "meal_type":
+					mealType = v
+				case "status":
+					status = v
+				}
+			}
+		}
+		if date == "" || mealType == "" || status == "" {
+			return types.ErrorResponse("Please provide all required options: date, meal_type, and status.")
+		}
+		return handleMealSet(userID, date, mealType, status)
 	default:
 		return types.ErrorResponse(fmt.Sprintf("Unknown subcommand: `%s`", sub.Name))
 	}
@@ -73,6 +91,39 @@ func handleMealView(userID string, date string) *types.InteractionResponse {
 		Color:  types.ColorSuccess,
 		Fields: fields,
 		Footer: &types.EmbedFooter{Text: "User: " + result.UserID},
+	})
+}
+
+type mealSetRequest struct {
+	DiscordID string `json:"discord_id"`
+	Date      string `json:"date"`
+	MealType  string `json:"meal_type"`
+	Status    string `json:"status"`
+}
+
+func handleMealSet(userID, date, mealType, status string) *types.InteractionResponse {
+	err := client.Post("/meal/participation/set", mealSetRequest{
+		DiscordID: userID,
+		Date:      date,
+		MealType:  mealType,
+		Status:    status,
+	}, nil)
+	if err != nil {
+		return types.ErrorResponse("Failed to update meal status: " + err.Error())
+	}
+
+	emoji := "✅"
+	optText := "opted **in** to"
+	if strings.EqualFold(status, "NO") {
+		emoji = "❌"
+		optText = "opted **out** of"
+	}
+
+	return types.EmbedResponse(types.Embed{
+		Title:       "Meal Status Updated",
+		Description: fmt.Sprintf("%s You have %s **%s** on %s.", emoji, optText, capitalize(mealType), date),
+		Color:       types.ColorSuccess,
+		Footer:      &types.EmbedFooter{Text: "User: " + userID},
 	})
 }
 
