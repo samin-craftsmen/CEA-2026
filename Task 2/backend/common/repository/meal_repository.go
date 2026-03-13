@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -43,15 +44,14 @@ func GetUserMeals(userID string, date string) (map[string]string, error) {
 	db := database.GetDBClient()
 	table := database.GetTableName()
 
-	pk := "MEAL#" + date
-	prefix := "USER#" + userID
+	pk := "DAY#" + date
+	userFilter := "USER#" + userID
 
 	out, err := db.Query(&dynamodb.QueryInput{
 		TableName:              aws.String(table),
-		KeyConditionExpression: aws.String("PK = :pk AND begins_with(SK, :sk)"),
+		KeyConditionExpression: aws.String("PK = :pk"),
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":pk": {S: aws.String(pk)},
-			":sk": {S: aws.String(prefix)},
 		},
 	})
 	if err != nil {
@@ -61,17 +61,21 @@ func GetUserMeals(userID string, date string) (map[string]string, error) {
 	result := map[string]string{}
 	for _, item := range out.Items {
 		sk := *item["SK"].S
-		if len(sk) >= 5 && sk[len(sk)-5:] == "lunch" {
-			result["lunch"] = *item["participation"].S
+		if !strings.Contains(sk, userFilter) {
+			continue
 		}
-		if len(sk) >= 6 && sk[len(sk)-6:] == "snacks" {
-			result["snacks"] = *item["participation"].S
+		// SK format: TEAM#<teamId>#MEAL#<mealType>#USER#<userId>
+		mealIdx := strings.Index(sk, "#MEAL#")
+		userIdx := strings.Index(sk, "#USER#")
+		if mealIdx >= 0 && userIdx > mealIdx {
+			mealType := sk[mealIdx+6 : userIdx]
+			result[mealType] = *item["participation"].S
 		}
 	}
 	return result, nil
 }
 
-func GetUserRole(discordID string) (string, error) {
+func GetUserRole(discordID string) (string, string, error) {
 	db := database.GetDBClient()
 	table := database.GetTableName()
 
@@ -83,26 +87,39 @@ func GetUserRole(discordID string) (string, error) {
 		},
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if result.Item == nil {
-		return "", fmt.Errorf("user not found")
+		return "", "", fmt.Errorf("user not found")
 	}
+	role := ""
 	if v, ok := result.Item["role"]; ok && v.S != nil {
-		return *v.S, nil
+		role = *v.S
 	}
-	return "", fmt.Errorf("role not found for user")
+	teamID := ""
+	if v, ok := result.Item["teamId"]; ok && v.S != nil {
+		teamID = *v.S
+	}
+	if role == "" {
+		return "", "", fmt.Errorf("role not found for user")
+	}
+	if teamID == "" {
+		return "", "", fmt.Errorf("teamId not found for user")
+	}
+	return role, teamID, nil
 }
 
-func SetMealParticipation(userID, date, mealType, status string) error {
+func SetMealParticipation(userID, date, mealType, status, teamID string) error {
 	db := database.GetDBClient()
 	table := database.GetTableName()
+
+	sk := teamID + "#MEAL#" + mealType + "#USER#" + userID
 
 	_, err := db.PutItem(&dynamodb.PutItemInput{
 		TableName: aws.String(table),
 		Item: map[string]*dynamodb.AttributeValue{
-			"PK":            {S: aws.String("MEAL#" + date)},
-			"SK":            {S: aws.String("USER#" + userID + "#" + mealType)},
+			"PK":            {S: aws.String("DAY#" + date)},
+			"SK":            {S: aws.String(sk)},
 			"participation": {S: aws.String(status)},
 		},
 	})

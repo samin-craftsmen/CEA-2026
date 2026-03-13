@@ -53,12 +53,9 @@ func SetMealStatus(discordID, date, mealType, status string) error {
 		return err
 	}
 
-	role, err := repository.GetUserRole(discordID)
+	_, teamID, err := repository.GetUserRole(discordID)
 	if err != nil {
 		return err
-	}
-	if role != "EMPLOYEE" {
-		return &ValidationError{"only employees can update meal status"}
 	}
 
 	mealType = strings.ToLower(mealType)
@@ -79,7 +76,7 @@ func SetMealStatus(discordID, date, mealType, status string) error {
 		return &ValidationError{"the cutoff time (9pm) has passed — meal status can no longer be updated for this date"}
 	}
 
-	return repository.SetMealParticipation(discordID, date, mealType, status)
+	return repository.SetMealParticipation(discordID, date, mealType, status, teamID)
 }
 
 // isPastCutoff reports whether the cutoff for updating the given date has passed.
