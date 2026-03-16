@@ -97,49 +97,107 @@ The dashboard communicates with backend APIs exposed via API Gateway.
 
 ## 1.4 DynamoDB Design (Single Table)
 
-**Table Name:** `MHP`
+**Table Name:** trainee-2026-samin-dynamoDB-mhp
 
-### Primary Key
-- `PK` (Partition Key)
-- `SK` (Sort Key)
+## Primary Keys
+- **PK** – Partition Key
+- **SK** – Sort Key
 
-The system stores multiple logical entities within a single DynamoDB table.
+## Conventions / Prefixes
+- `USER#<userId>` – user entity  
+- `TEAM#<teamId>` – team entity  
+- `DAY#<YYYY-MM-DD>` – date-based entity  
+- `MEAL#<mealType>` – meal type (lunch/dinner)  
+- `LOC#<locationType>` – work location (office/WFH)  
+- `SPECIAL#<YYYY-MM-DD>` – special day  
 
-#### Entities include:
 
-User  
-Team  
-Meal Participation  
-Work Location  
-Day Configuration  
-Meal Configuration
+---
 
-### Entity Patterns
+## Users
 
-| Entity                                              | PK                | SK                     | Purpose                                                                                                                                     |
-| --------------------------------------------------- | ----------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **User**                                            | `USER#<id>`       | `META`                 | Stores employee metadata: role, team. Essential for role-based access, team validation, and identifying users across meals and work locations.       |
-| **Meal Participation**                              | `MEAL#<date>`     | `USER#<id>#<mealType>` | Represents whether a user participates in a meal (Yes/No). Needed to track daily meal headcount, allow employees to opt-in/out, and generate reports.     |
-| **Work Location**                                   | `WORK#<date>`     | `USER#<id>`            | Stores where a user will work (Office/WFH) on a specific date. Necessary for linking attendance to meals and automating meal logic. |
-| **Day Configuration**                               | `DAY#<date>`      | `META`                 | Stores special days like holidays, office closed, and events. Needed to enforce date validation and cutoff rules.                                       |
-| **Team**                                            | `TEAM#<teamId>`   | `META`                 | Stores team metadata (name, lead, members). Will help in team based features like Team Lead meal management, and bulk operations and report generation.                           |
-| **Meal Configuration**  | `CONFIG#MEALTYPE` | `<mealType>`           | Stores allowed meal types (Lunch, Snacks, Event wise options) and settings. Supports admin operations to manage meals and enforce constraints.                     |
+### Access Patterns
+- Get user by `userId`  
+- Get user by external identity (e.g., `discordId`)  
+- Get all users  
 
-### Note: How they are queried will be explained feature by feature. For example, for feature 1 we will need to use GSI between user and team entity.
+### DB Schema
+- **PK:** USERS  
+- **SK:** `<userId>`  
 
-#### DynamoDB Access Patterns
+### Notes
+- User metadata stored in the item (role, team)  
+- Map user to team when adding a user to the Users entity  
 
-The DynamoDB schema is designed based on the following primary access patterns:
+---
 
-1. Get a user profile
-2. Get meal participation for a user on a specific date
-3. Get all meal participants for a specific date
-4. Get work location for a user on a specific date
-5. Get all users for a team
-6. Get day configuration for a specific date
-7. Update meal participation for a user
+## Team
 
-### Note: Access pattern can be modified based on new features based on which this will be updated. Also how these access patterns are executed is explained on feature level design. For feature one we will only need to deal with employees(only) meal participation.
+### Access Patterns
+- Get team by `teamId`  
+- Get all teams  
+- Get all users in a team  
+
+### DB Schema
+- **PK:** TEAM#<teamId>  
+- **SK:** USER#<userId>  
+
+### Notes
+- Scanning to get all teams is acceptable as it is rare and the dataset is small  
+
+---
+
+## Meal Participation
+
+### Access Patterns
+- Get all participation records for a date (daily totals)  
+- Get a specific user's meals for a date  
+- Get a specific meal record (user + date + mealType)  
+- Get a user's participation history across dates (reporting)  
+- Admin quick daily totals  
+- Team Lead quick team-level totals  
+
+### DB Schema
+- **PK:** DAY#<YYYY-MM-DD>  
+- **SK:** TEAM#<teamId>MEAL#<mealType>#USER#<userId>  
+
+### Notes
+- Admin daily totals: Query `PK = DAY#<date>` → all `MEAL#*` items  
+- Team Lead totals: Include `TEAM#<teamId>` as an attribute  
+
+---
+
+## Work Location
+
+### Access Patterns
+- Get all location records for a date (daily headcount)  
+- Get a specific user's location for a date  
+- Get a user's location records for a month  
+
+### DB Schema
+- **Date View:**  
+  - **PK:** DAY#<YYYY-MM-DD>  
+  - **SK:** USER#<userId>#LOC#<locationType>  
+
+- **User View:**  
+  - **PK:** USER#<userId>  
+  - **SK:** DAY#<YYYY-MM-DD>#LOC#<locationType>  
+
+### Notes
+- Records are stored twice since a single view cannot satisfy all access patterns  
+- Range search on PKs is not feasible  
+
+---
+
+## Special Day
+
+### Access Patterns
+- Get special day for a specific date  
+- Get all special days in a month  
+
+### DB Schema
+- **PK:** SPECIAL  
+- **SK:** Date#<YYYY-MM-DD>
 
 ---
 
@@ -186,7 +244,6 @@ Admin operations:
 
 Authorization checks occur in Lambda before database operations.
 
-#### Note: For iteration 1 lambda is not used. It will be built in interation 2.
 
 ## 1.6 Cross-Cutting Rules
 
@@ -222,30 +279,23 @@ Allows employees to manage meal participation. Limited to employee actions only.
   - Update restrictions (such as no update after cutoff time).
   - Role based access.
 
-## Entities
-
-| Entity                 | Attributes (for this feature)                                            | Purpose                                                     |
-| ---------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------- |
-| **User**               | `role`, `teamId`                                                         | Validate role (EMPLOYEE) and team for internal Lambda logic |
-| **Meal Participation** | `participation` (YES/NO)                                                 | Core data for marking and tracking meals                    |
-| **Day Configuration**  | `type` (GOV HOLIDAY/CLOSED/EVENT)                                        | Used for read-only validation of date before update         |
-| **Team (via GSI)**     | `teamId`, `name`, `leadId`, `description`, `additionalMetadata`          | Supports team-level queries for Team Leads/Admins           |
-
-### Note: Team entity is not needed for feature 1 yet. Only shown for documentation as to show how User and Team entities will be connected. It is not needed as only admin/team lead can do team wise operations. 
-
-Stored in **single DynamoDB table (`MHP`)** with PK/SK prefixes: `USER#<id>`, `MEAL#<date>`, `DAY#<date>`
 
 ## Access Patterns & Queries
 
 1. **View own meals**
-   - `Query PK=MEAL#<date> SK begins_with USER#<userId>`
+Retrieve all meal records for a user on a specific date.
+   - `Query PK=DAY#<date> Filter: contains(SK, USER#<userId>)`
 
 2. **Update own meals**
-   - `PutItem PK=MEAL#<date> SK=USER#<userId>#<mealType>`
+The employee can opt in or opt out of a meal.
+   - `PutItem PK=DAY#<date> SK = TEAM#<teamId>#MEAL#<mealType>#USER#<userId>`
+   - Attributes: YES/NO
    - Lambda validates role, cutoff, closed day
 
 3. **Day validation**
-   - `Query PK=DAY#<date> SK=META`
+   - Before allowing updates, the system verifies whether the selected date is a special day.
+   - `Query PK=SPECIAL SK = DATE#<YYYY-MM-DD>`
+   - If result exists and type indicates closure, updates are rejected.
 
 ## User Flows
 
@@ -263,16 +313,16 @@ Stored in **single DynamoDB table (`MHP`)** with PK/SK prefixes: `USER#<id>`, `M
    - Update record
 4. Bot confirms action
 
-**PK:** `MEAL#<date>`  
-**SK:** begins_with `USER#<userId>#<mealType>`
+**PK:** `DAY#<date>`  
+**SK:** `TEAM#<teamId>#MEAL#<mealType>#USER#<userId>`
 
 ### View Status
 
 1. User runs `/meal view`
 2. Lambda queries:
 
-**PK:** `MEAL#<date>`  
-**SK:** begins_with `USER#<userId>`
+**PK:** `DAY#<date>`  
+**Filter:** `contains(SK, USER#<userId>)`
 
 
 3. Bot returns status
