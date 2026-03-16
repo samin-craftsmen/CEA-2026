@@ -244,7 +244,6 @@ Admin operations:
 
 Authorization checks occur in Lambda before database operations.
 
-#### Note: For iteration 1 lambda is not used. It will be built in interation 2.
 
 ## 1.6 Cross-Cutting Rules
 
@@ -314,16 +313,16 @@ The employee can opt in or opt out of a meal.
    - Update record
 4. Bot confirms action
 
-**PK:** `MEAL#<date>`  
-**SK:** begins_with `USER#<userId>#<mealType>`
+**PK:** `DAY#<date>`  
+**SK:** `TEAM#<teamId>#MEAL#<mealType>#USER#<userId>`
 
 ### View Status
 
 1. User runs `/meal view`
 2. Lambda queries:
 
-**PK:** `MEAL#<date>`  
-**SK:** begins_with `USER#<userId>`
+**PK:** `DAY#<date>`  
+**Filter:** `contains(SK, USER#<userId>)`
 
 
 3. Bot returns status
@@ -333,4 +332,165 @@ The employee can opt in or opt out of a meal.
 - Closed day → reject
 - After cutoff → reject
 - Duplicate → overwrite
+---
+
+---
+
+# Feature 2: Team Lead Meal Management
+
+## Overview
+
+Allows Team Leads to manage meal participation for employees within their assigned team.
+
+Team Leads can:
+
+- Select a date
+- Select meal type
+- Mark meal participation (Yes/No) for employees within their team
+- View meal status for employees in their team for a selected date
+
+The feature improves operational efficiency by allowing delegated management of meal participation while enforcing strict role and team-based access restrictions.
+
+Updates performed by Team Leads must follow the same operational policies as employee updates, including date validation, cutoff rules, and data integrity checks.
+
+---
+
+## Access Patterns & Queries
+
+### 1. View team meal status for a date
+
+Retrieve all meal records for a specific team and date.
+
+**Query**
+
+PK: `DAY#<date>`
+
+Filter condition:
+`contains(SK, TEAM#<teamId>)`
+
+Result:
+Returns all team member meal records for that date.
+
+---
+
+### 2. Update meal participation for a team member
+
+Team Lead updates meal participation for a user belonging to their team.
+
+**PutItem**
+
+PK: `DAY#<date>`  
+SK: `TEAM#<teamId>#MEAL#<mealType>#USER#<userId>`
+
+Attributes:
+
+```
+participation: YES | NO
+updatedBy: TEAM_LEAD
+updatedAt: timestamp
+```
+
+Lambda validations performed before update:
+
+- Role must be `TEAM_LEAD`
+- Target user must belong to the same team
+- Date must not be a closed/special day
+- Update must be before cutoff time
+
+Latest update overwrites previous value.
+
+---
+
+### 3. Validate team membership
+
+Before allowing updates, Lambda verifies that the target user belongs to the Team Lead’s team.
+
+**Query**
+
+PK: `TEAM#<teamId>`  
+SK: `USER#<userId>`
+
+If no record exists, the update is rejected.
+
+---
+
+
+## User Flows
+
+### Update Team Member Meal
+
+1. Team Lead runs `/team-meal set`
+
+2. Bot collects:
+   - Date
+   - Meal Type
+   - Target Employee
+   - YES/NO participation
+
+3. Lambda performs validations:
+   - Validate role = `TEAM_LEAD`
+   - Validate employee belongs to Team Lead's team
+   - Check for closed day
+   - Check cutoff time
+
+4. If validation passes:
+
+```
+PK: DAY#<date>
+SK: TEAM#<teamId>#MEAL#<mealType>#USER#<userId>
+```
+
+5. Record is written to DynamoDB.
+
+6. Bot confirms update.
+
+---
+
+### View Team Meal Status
+
+1. Team Lead runs `/team-meal view`
+
+2. Bot collects:
+   - Date
+   - Meal Type (optional)
+
+3. Lambda queries DynamoDB:
+
+```
+PK: DAY#<date>
+Filter: contains(SK, TEAM#<teamId>)
+```
+
+4. Lambda formats response to display:
+
+```
+Employee Name | Lunch | Dinner
+```
+
+5. Bot returns formatted team status.
+
+---
+
+## Validations
+
+Team Lead operations must satisfy the following conditions:
+
+- **Role Validation**
+  - User role must be `TEAM_LEAD`.
+
+- **Team Boundary Enforcement**
+  - Team Leads can only modify records of employees in their own team.
+
+- **Closed Day Restriction**
+  - Updates are rejected if the selected date is marked as office closed or holiday.
+
+- **Cutoff Enforcement**
+  - Updates cannot occur after the configured meal cutoff time.
+
+- **Duplicate Handling**
+  - Latest update overwrites previous participation value.
+
+- **Data Integrity**
+  - Invalid user IDs or meal types are rejected.
+
 ---

@@ -29,27 +29,34 @@ powershell Compress-Archive -Path bootstrap -DestinationPath function.zip -Force
 
 ## Test
 
-### 1. Health Check
 
-```cmd
+### 1. View Meal Participation
 
-curl https://pr807w8a23.execute-api.ap-south-1.amazonaws.com/default/health
+#### via discord bot ->
 
+- Use the `/meal view {date}` Discord slash command to check meal participation status for a specific date.
+
+**Command format:**
+```
+ /meal view date:YYYY-MM-DD
+```
+**Example:**
+```
+/meal view date:2026-03-10
 ```
 
-Expected Response:
-
+**Expected Response:**
 ```
-OK
+{"date":"2026-03-10","meals":{"lunch":"YES","snacks":"YES"},"user_id":"your_discord_id"}
 ```
 
-### 2. View Meal Participation
+#### via direct api call ->
 
 ```cmd
 
 curl -X POST https://pr807w8a23.execute-api.ap-south-1.amazonaws.com/default/meal/participation/view ^
-More?   -H "Content-Type: application/json" ^
-More?   -d "{\"discord_id\": \"your_discord_id\"}"
+  -H "Content-Type: application/json" ^
+  -d "{\"discord_id\": \"your_discord_id\", \"date\": \"2026-03-10\"}"
 
 ```
 
@@ -59,3 +66,44 @@ Expected Response:
 {"date":"2026-03-10","meals":{"lunch":"YES","snacks":"YES"},"user_id":"your_discord_id"}
 
 ```
+
+### 2. Set Meal Status
+
+
+#### via discord bot ->
+
+- Use the `/meal view {date}` Discord slash command to check meal participation status for a specific date.
+
+**Command format:**
+```
+ /meal set date:YYYY-MM-DD meal_type:Lunch/Snacks status:Yes/No
+```
+**Example:**
+```
+/meal view date:2026-03-10 meal_type:Lunch status:No
+```
+
+**Expected Response:**
+```
+{"You have opted out of Lunch on 2026-03-13."}
+```
+
+#### via direct api call ->
+
+```cmd
+
+curl -X POST https://pr807w8a23.execute-api.ap-south-1.amazonaws.com/default/meal/participation/set ^
+  -H "Content-Type: application/json" ^
+  -d "{\"discord_id\": \"123456789\", \"date\": \"2026-03-13\", \"meal_type\": \"lunch\", \"status\": \"NO\"}"
+
+```
+
+Expected Response:
+
+```
+{"message":"meal status updated successfully"}
+
+```
+
+
+
