@@ -79,6 +79,46 @@ func SetMealStatus(discordID, date, mealType, status string) error {
 	return repository.SetMealParticipation(discordID, date, mealType, status, teamID)
 }
 
+// TeamLeadSetMealStatus updates a team member's meal participation on behalf of a team lead.
+// It enforces team-lead-only access, team boundary restrictions, and a 9pm cutoff.
+func TeamLeadSetMealStatus(teamLeadID, targetUserID, date, mealType, status string) error {
+	role, teamID, err := repository.GetUserRole(teamLeadID)
+	if err != nil {
+		return err
+	}
+	if role != "TEAM_LEAD" {
+		return &ValidationError{"access denied: only team leads can perform this action"}
+	}
+
+	isMember, err := repository.VerifyTeamMembership(teamID, targetUserID)
+	if err != nil {
+		return err
+	}
+	if !isMember {
+		return &ValidationError{"access denied: target user does not belong to your team"}
+	}
+
+	mealType = strings.ToLower(mealType)
+	if mealType != "lunch" && mealType != "snacks" {
+		return &ValidationError{fmt.Sprintf("invalid meal type '%s': must be 'lunch' or 'snacks'", mealType)}
+	}
+
+	status = strings.ToUpper(status)
+	if status != "YES" && status != "NO" {
+		return &ValidationError{fmt.Sprintf("invalid status '%s': must be 'YES' or 'NO'", status)}
+	}
+
+	locked, err := isPastCutoff(date)
+	if err != nil {
+		return &ValidationError{err.Error()}
+	}
+	if locked {
+		return &ValidationError{"the cutoff time (9pm) has passed — meal status can no longer be updated for this date"}
+	}
+
+	return repository.SetMealParticipation(targetUserID, date, mealType, status, teamID)
+}
+
 // isPastCutoff reports whether the cutoff for updating the given date has passed.
 // Rules (all times in IST / UTC+5:30):
 //   - Target date is today or in the past → always locked.

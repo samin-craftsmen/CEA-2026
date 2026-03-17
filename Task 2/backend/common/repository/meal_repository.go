@@ -28,13 +28,27 @@ func EnsureUserExists(discordID string) error {
 		return nil
 	}
 
+	const defaultTeamID = "TEAM#engineering"
+
 	_, err = db.PutItem(&dynamodb.PutItemInput{
 		TableName: aws.String(table),
 		Item: map[string]*dynamodb.AttributeValue{
 			"PK":     {S: aws.String(pk)},
 			"SK":     {S: aws.String("META")},
 			"role":   {S: aws.String("EMPLOYEE")},
-			"teamId": {S: aws.String("TEAM#engineering")},
+			"teamId": {S: aws.String(defaultTeamID)},
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	// Also create the team membership record so VerifyTeamMembership works.
+	_, err = db.PutItem(&dynamodb.PutItemInput{
+		TableName: aws.String(table),
+		Item: map[string]*dynamodb.AttributeValue{
+			"PK": {S: aws.String(defaultTeamID)},
+			"SK": {S: aws.String("USER#" + discordID)},
 		},
 	})
 	return err
@@ -124,4 +138,23 @@ func SetMealParticipation(userID, date, mealType, status, teamID string) error {
 		},
 	})
 	return err
+}
+
+// VerifyTeamMembership checks whether targetUserID is a member of the given team.
+// teamID must be in the stored format (e.g. "TEAM#engineering").
+func VerifyTeamMembership(teamID, targetUserID string) (bool, error) {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	result, err := db.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String(table),
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {S: aws.String(teamID)},
+			"SK": {S: aws.String("USER#" + targetUserID)},
+		},
+	})
+	if err != nil {
+		return false, err
+	}
+	return result.Item != nil, nil
 }
