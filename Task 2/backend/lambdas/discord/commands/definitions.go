@@ -84,6 +84,19 @@ func Definitions() []SlashCommandDefinition {
 			Description: "Manage meal participation for your team members (Team Lead only)",
 			Options: []SlashCommandOption{
 				{
+					Name:        "view",
+					Description: "View meal participation for your team on a specific date",
+					Type:        1, // SUB_COMMAND
+					Options: []SlashCommandOption{
+						{
+							Name:        "date",
+							Description: "Date in YYYY-MM-DD format (e.g. 2026-03-15)",
+							Type:        3, // STRING
+							Required:    true,
+						},
+					},
+				},
+				{
 					Name:        "set",
 					Description: "Set a team member's meal participation status",
 					Type:        1, // SUB_COMMAND
