@@ -79,5 +79,50 @@ func Definitions() []SlashCommandDefinition {
 				},
 			},
 		},
+		{
+			Name:        "team-meal",
+			Description: "Manage meal participation for your team members (Team Lead only)",
+			Options: []SlashCommandOption{
+				{
+					Name:        "set",
+					Description: "Set a team member's meal participation status",
+					Type:        1, // SUB_COMMAND
+					Options: []SlashCommandOption{
+						{
+							Name:        "employee",
+							Description: "The team member to update",
+							Type:        6, // USER
+							Required:    true,
+						},
+						{
+							Name:        "date",
+							Description: "Date in YYYY-MM-DD format (e.g. 2026-03-15)",
+							Type:        3, // STRING
+							Required:    true,
+						},
+						{
+							Name:        "meal_type",
+							Description: "The meal to update",
+							Type:        3, // STRING
+							Required:    true,
+							Choices: []SlashCommandChoice{
+								{Name: "Lunch", Value: "lunch"},
+								{Name: "Snacks", Value: "snacks"},
+							},
+						},
+						{
+							Name:        "status",
+							Description: "YES to opt in, NO to opt out",
+							Type:        3, // STRING
+							Required:    true,
+							Choices: []SlashCommandChoice{
+								{Name: "YES — Opt in", Value: "YES"},
+								{Name: "NO — Opt out", Value: "NO"},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 }
