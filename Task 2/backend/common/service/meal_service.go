@@ -79,6 +79,58 @@ func SetMealStatus(discordID, date, mealType, status string) error {
 	return repository.SetMealParticipation(discordID, date, mealType, status, teamID)
 }
 
+type TeamMealViewResponse struct {
+	Date    string                       `json:"date"`
+	TeamID  string                       `json:"team_id"`
+	Members map[string]map[string]string `json:"members"`
+}
+
+// mealTypes lists all supported meal types used to fill in defaults.
+var mealTypes = []string{"lunch", "snacks"}
+
+// TeamLeadGetMealView returns meal participation for all members of the team lead's team on a given date.
+// Any meal type not explicitly recorded defaults to YES.
+func TeamLeadGetMealView(teamLeadID, date string) (*TeamMealViewResponse, error) {
+	role, teamID, err := repository.GetUserRole(teamLeadID)
+	if err != nil {
+		return nil, err
+	}
+	if role != "TEAM_LEAD" {
+		return nil, &ValidationError{"access denied: only team leads can perform this action"}
+	}
+
+	teamMembers, err := repository.GetTeamMembers(teamID)
+	if err != nil {
+		return nil, err
+	}
+
+	existing, err := repository.GetTeamMeals(teamID, date)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build result: every member gets every meal type, defaulting to YES.
+	result := make(map[string]map[string]string, len(teamMembers))
+	for _, memberID := range teamMembers {
+		meals := map[string]string{}
+		for _, mt := range mealTypes {
+			meals[mt] = "YES"
+		}
+		if recorded, ok := existing[memberID]; ok {
+			for mt, status := range recorded {
+				meals[mt] = status
+			}
+		}
+		result[memberID] = meals
+	}
+
+	return &TeamMealViewResponse{
+		Date:    date,
+		TeamID:  teamID,
+		Members: result,
+	}, nil
+}
+
 // TeamLeadSetMealStatus updates a team member's meal participation on behalf of a team lead.
 // It enforces team-lead-only access, team boundary restrictions, and a 9pm cutoff.
 func TeamLeadSetMealStatus(teamLeadID, targetUserID, date, mealType, status string) error {

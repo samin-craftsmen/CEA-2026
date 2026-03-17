@@ -140,6 +140,78 @@ func SetMealParticipation(userID, date, mealType, status, teamID string) error {
 	return err
 }
 
+// GetTeamMeals returns all meal participation records for a given team and date.
+// Result is a map of userID → map of mealType → participation status.
+func GetTeamMeals(teamID, date string) (map[string]map[string]string, error) {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	pk := "DAY#" + date
+	teamPrefix := teamID + "#MEAL#"
+
+	out, err := db.Query(&dynamodb.QueryInput{
+		TableName:              aws.String(table),
+		KeyConditionExpression: aws.String("PK = :pk AND begins_with(SK, :prefix)"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk":     {S: aws.String(pk)},
+			":prefix": {S: aws.String(teamPrefix)},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// SK format: TEAM#<teamId>#MEAL#<mealType>#USER#<userId>
+	result := map[string]map[string]string{}
+	for _, item := range out.Items {
+		sk := *item["SK"].S
+		mealIdx := strings.Index(sk, "#MEAL#")
+		userIdx := strings.Index(sk, "#USER#")
+		if mealIdx < 0 || userIdx <= mealIdx {
+			continue
+		}
+		mealType := sk[mealIdx+6 : userIdx]
+		userID := sk[userIdx+6:]
+		participation := ""
+		if v, ok := item["participation"]; ok && v.S != nil {
+			participation = *v.S
+		}
+		if result[userID] == nil {
+			result[userID] = map[string]string{}
+		}
+		result[userID][mealType] = participation
+	}
+	return result, nil
+}
+
+// GetTeamMembers returns all user IDs that belong to the given team.
+// teamID must be in the stored format (e.g. "TEAM#engineering").
+func GetTeamMembers(teamID string) ([]string, error) {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	out, err := db.Query(&dynamodb.QueryInput{
+		TableName:              aws.String(table),
+		KeyConditionExpression: aws.String("PK = :pk"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk": {S: aws.String(teamID)},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// SK format: USER#<userId>
+	var members []string
+	for _, item := range out.Items {
+		sk := *item["SK"].S
+		if strings.HasPrefix(sk, "USER#") {
+			members = append(members, sk[5:])
+		}
+	}
+	return members, nil
+}
+
 // VerifyTeamMembership checks whether targetUserID is a member of the given team.
 // teamID must be in the stored format (e.g. "TEAM#engineering").
 func VerifyTeamMembership(teamID, targetUserID string) (bool, error) {
