@@ -494,3 +494,233 @@ Team Lead operations must satisfy the following conditions:
   - Invalid user IDs or meal types are rejected.
 
 ---
+
+# Feature 3: Admin Meal Management
+
+## Overview
+
+Allows Administrators to fully manage and control meal participation across the system.
+
+Admins can:
+
+- Select a date  
+- Select meal type  
+- Mark meal participation (Yes/No) for any employee  
+- View meal status for any employee or across the system  
+- Perform bulk updates for multiple employees  
+- Add or modify meal types  
+- Add or modify meal items  
+
+All admin operations must comply with system-wide rules such as cutoff time, special day restrictions, and data integrity constraints.
+
+---
+
+## Access Patterns & Queries
+
+### 1. View meal status for a date (global view)
+
+Retrieve all meal participation records for a specific date.
+
+**Query**
+
+PK: `DAY#<date>`
+
+Result:  
+Returns all meal records for all teams and users.
+
+---
+
+### 2. View meal status for a specific employee
+
+Retrieve meal participation for a specific user on a given date.
+
+**Query**
+
+PK: `DAY#<date>`  
+Filter: `contains(SK, USER#<userId>)`
+
+---
+
+### 3. Update meal participation for any employee
+
+Admin updates meal participation for any user in the system.
+
+**PutItem**
+
+PK: `DAY#<date>`  
+SK: `TEAM#<teamId>#MEAL#<mealType>#USER#<userId>`
+
+Attributes:
+participation: YES | NO
+updatedBy: ADMIN
+updatedAt: timestamp
+
+
+Validations before update:
+
+- Role must be `ADMIN`
+- Date must not be a closed/special day
+- Update must be before cutoff time
+
+---
+
+### 4. Bulk update meal participation
+
+Admins can update multiple users in a single operation.
+
+**Approach**
+
+- Batch processing using multiple `PutItem` operations (or BatchWrite if optimized)
+
+For each user:
+
+PK: `DAY#<date>`  
+SK: `TEAM#<teamId>#MEAL#<mealType>#USER#<userId>`
+
+Attributes:
+participation: YES | NO
+updatedBy: ADMIN
+updatedAt: timestamp
+
+
+---
+
+### 5. Manage meal types
+
+Admins can create or update meal types (e.g., lunch, dinner, snacks).
+
+**DB Schema**
+
+PK: `CONFIG#MEALTYPE`  
+SK: `<mealType>`
+
+Attributes:
+name: string
+isActive: boolean
+createdAt: timestamp
+updatedAt: timestamp
+
+
+---
+
+### 6. Manage meal items
+
+Admins can define items under each meal type.
+
+**DB Schema**
+
+PK: `MEALTYPE#<mealType>`  
+SK: `ITEM#<itemId>`
+
+Attributes:
+itemName: string
+isActive: boolean
+createdAt: timestamp
+updatedAt: timestamp
+
+
+---
+
+## User Flows
+
+### Update Employee Meal
+
+1. Admin runs `/admin-meal set`
+
+2. Bot collects:
+   - Date  
+   - Meal Type  
+   - Target Employee  
+   - YES/NO participation  
+
+3. Lambda validations:
+   - Validate role = `ADMIN`  
+   - Check special/closed day  
+   - Check cutoff time  
+
+4. Write to DynamoDB:
+PK: DAY#<date>
+SK: TEAM#<teamId>#MEAL#<mealType>#USER#<userId>
+
+
+5. Bot confirms update
+
+---
+
+### Bulk Update Meals
+
+1. Admin runs `/admin-meal bulk-set`
+
+2. Bot collects:
+   - Date  
+   - Meal Type  
+   - List of Employees  
+   - YES/NO  
+
+3. Lambda:
+   - Validate role = `ADMIN`  
+   - Validate cutoff and special day  
+   - Iterate and write records  
+
+4. Bot confirms bulk update
+
+---
+
+### View Meal Status
+
+1. Admin runs `/admin-meal view`
+
+2. Bot collects:
+   - Date  
+   - (Optional) Team / Employee filter  
+
+3. Lambda queries:
+PK: DAY#<date>
+
+
+4. Returns aggregated or filtered results
+
+---
+
+### Manage Meal Types
+
+1. Admin runs `/meal-type add` or `/meal-type update`
+
+2. Lambda writes:
+PK: CONFIG#MEALTYPE
+SK: <mealType>
+
+
+---
+
+### Manage Meal Items
+
+1. Admin runs `/meal-item add` or `/meal-item update`
+
+2. Lambda writes:
+PK: MEALTYPE#<mealType>
+SK: ITEM#<itemId>
+
+
+---
+
+## Validations
+
+Admin operations must satisfy:
+
+- **Role Validation**
+  - User role must be `ADMIN`
+
+- **Closed Day Restriction**
+  - No updates allowed if the date is marked as office closed
+
+- **Cutoff Enforcement**
+  - Updates must occur before configured cutoff time
+
+- **Duplicate Handling**
+  - Latest update overwrites previous value (last-write-wins)
+
+- **Data Integrity**
+  - Invalid user IDs, meal types, or item IDs are rejected
+
+---
