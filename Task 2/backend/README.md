@@ -105,5 +105,69 @@ Expected Response:
 
 ```
 
+### 3. Team Lead - Set Meal Status
 
+#### via discord bot ->
+
+- Use the `/team-meal set` Discord slash command to update a team member's meal participation status.
+
+**Command format:**
+```
+/team-meal set employee:@TeamMember date:YYYY-MM-DD meal_type:Lunch/Snacks status:Yes/No
+```
+**Example:**
+```
+/team-meal set employee:@JohnDoe date:2026-03-19 meal_type:Lunch status:No
+```
+
+**Expected Response:**
+```
+❌ @JohnDoe has been opted out of Lunch on 2026-03-19.
+```
+
+#### via direct api call ->
+
+```cmd
+curl -X POST https://pr807w8a23.execute-api.ap-south-1.amazonaws.com/default/meal/team/set -H "Content-Type: application/json" -d "{\"team_lead_discord_id\": \"your_team_lead_discord_id\", \"target_discord_id\": \"employee_discord_id\", \"date\": \"2026-03-19\", \"meal_type\": \"lunch\", \"status\": \"NO\"}"
+```
+
+Expected Response:
+
+```
+{"message":"meal status updated successfully"}
+```
+
+### 4. Team Lead - View Meal Status
+
+#### via discord bot ->
+
+- Use the `/team-meal view` Discord slash command to view meal participation for all members of your team on a specific date.
+
+**Command format:**
+```
+/team-meal view date:YYYY-MM-DD
+```
+**Example:**
+```
+/team-meal view date:2026-03-19
+```
+
+**Expected Response:**
+```
+Team Meal Status — 2026-03-19
+@JohnDoe    ✅ Lunch: YES  |  ✅ Snacks: YES
+@JaneDoe    ❌ Lunch: NO   |  ✅ Snacks: YES
+```
+
+#### via direct api call ->
+
+```cmd
+curl -X POST https://pr807w8a23.execute-api.ap-south-1.amazonaws.com/default/meal/team/view -H "Content-Type: application/json" -d "{\"team_lead_discord_id\": \"your_team_lead_discord_id\", \"date\": \"2026-03-19\"}"
+```
+
+Expected Response:
+
+```
+{"date":"2026-03-19","team_id":"TEAM#engineering","members":{"employee_discord_id":{"lunch":"YES","snacks":"YES"}}}
+```
 
