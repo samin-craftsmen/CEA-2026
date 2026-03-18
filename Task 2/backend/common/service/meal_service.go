@@ -79,6 +79,98 @@ func SetMealStatus(discordID, date, mealType, status string) error {
 	return repository.SetMealParticipation(discordID, date, mealType, status, teamID)
 }
 
+type TeamMealViewResponse struct {
+	Date    string                       `json:"date"`
+	TeamID  string                       `json:"team_id"`
+	Members map[string]map[string]string `json:"members"`
+}
+
+// mealTypes lists all supported meal types used to fill in defaults.
+var mealTypes = []string{"lunch", "snacks"}
+
+// TeamLeadGetMealView returns meal participation for all members of the team lead's team on a given date.
+// Any meal type not explicitly recorded defaults to YES.
+func TeamLeadGetMealView(teamLeadID, date string) (*TeamMealViewResponse, error) {
+	role, teamID, err := repository.GetUserRole(teamLeadID)
+	if err != nil {
+		return nil, err
+	}
+	if role != "TEAM_LEAD" {
+		return nil, &ValidationError{"access denied: only team leads can perform this action"}
+	}
+
+	teamMembers, err := repository.GetTeamMembers(teamID)
+	if err != nil {
+		return nil, err
+	}
+
+	existing, err := repository.GetTeamMeals(teamID, date)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build result: every member gets every meal type, defaulting to YES.
+	result := make(map[string]map[string]string, len(teamMembers))
+	for _, memberID := range teamMembers {
+		meals := map[string]string{}
+		for _, mt := range mealTypes {
+			meals[mt] = "YES"
+		}
+		if recorded, ok := existing[memberID]; ok {
+			for mt, status := range recorded {
+				meals[mt] = status
+			}
+		}
+		result[memberID] = meals
+	}
+
+	return &TeamMealViewResponse{
+		Date:    date,
+		TeamID:  teamID,
+		Members: result,
+	}, nil
+}
+
+// TeamLeadSetMealStatus updates a team member's meal participation on behalf of a team lead.
+// It enforces team-lead-only access, team boundary restrictions, and a 9pm cutoff.
+func TeamLeadSetMealStatus(teamLeadID, targetUserID, date, mealType, status string) error {
+	role, teamID, err := repository.GetUserRole(teamLeadID)
+	if err != nil {
+		return err
+	}
+	if role != "TEAM_LEAD" {
+		return &ValidationError{"access denied: only team leads can perform this action"}
+	}
+
+	isMember, err := repository.VerifyTeamMembership(teamID, targetUserID)
+	if err != nil {
+		return err
+	}
+	if !isMember {
+		return &ValidationError{"access denied: target user does not belong to your team"}
+	}
+
+	mealType = strings.ToLower(mealType)
+	if mealType != "lunch" && mealType != "snacks" {
+		return &ValidationError{fmt.Sprintf("invalid meal type '%s': must be 'lunch' or 'snacks'", mealType)}
+	}
+
+	status = strings.ToUpper(status)
+	if status != "YES" && status != "NO" {
+		return &ValidationError{fmt.Sprintf("invalid status '%s': must be 'YES' or 'NO'", status)}
+	}
+
+	locked, err := isPastCutoff(date)
+	if err != nil {
+		return &ValidationError{err.Error()}
+	}
+	if locked {
+		return &ValidationError{"the cutoff time (9pm) has passed — meal status can no longer be updated for this date"}
+	}
+
+	return repository.SetMealParticipation(targetUserID, date, mealType, status, teamID)
+}
+
 // isPastCutoff reports whether the cutoff for updating the given date has passed.
 // Rules (all times in IST / UTC+5:30):
 //   - Target date is today or in the past → always locked.
