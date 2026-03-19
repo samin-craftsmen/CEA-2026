@@ -137,5 +137,69 @@ func Definitions() []SlashCommandDefinition {
 				},
 			},
 		},
+		{
+			Name:        "admin-meal",
+			Description: "Manage meal participation for any employee (Admin only)",
+			Options: []SlashCommandOption{
+				{
+					Name:        "view",
+					Description: "View an employee's meal participation for a specific date",
+					Type:        1, // SUB_COMMAND
+					Options: []SlashCommandOption{
+						{
+							Name:        "employee",
+							Description: "The employee to view",
+							Type:        6, // USER
+							Required:    true,
+						},
+						{
+							Name:        "date",
+							Description: "Date in YYYY-MM-DD format (e.g. 2026-03-15)",
+							Type:        3, // STRING
+							Required:    true,
+						},
+					},
+				},
+				{
+					Name:        "set",
+					Description: "Set an employee's meal participation status",
+					Type:        1, // SUB_COMMAND
+					Options: []SlashCommandOption{
+						{
+							Name:        "employee",
+							Description: "The employee to update",
+							Type:        6, // USER
+							Required:    true,
+						},
+						{
+							Name:        "date",
+							Description: "Date in YYYY-MM-DD format (e.g. 2026-03-15)",
+							Type:        3, // STRING
+							Required:    true,
+						},
+						{
+							Name:        "meal_type",
+							Description: "The meal to update",
+							Type:        3, // STRING
+							Required:    true,
+							Choices: []SlashCommandChoice{
+								{Name: "Lunch", Value: "lunch"},
+								{Name: "Snacks", Value: "snacks"},
+							},
+						},
+						{
+							Name:        "status",
+							Description: "YES to opt in, NO to opt out",
+							Type:        3, // STRING
+							Required:    true,
+							Choices: []SlashCommandChoice{
+								{Name: "YES — Opt in", Value: "YES"},
+								{Name: "NO — Opt out", Value: "NO"},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 }
