@@ -403,3 +403,73 @@ func isPastCutoff(date string) (bool, error) {
 	// Day after tomorrow or further: not locked
 	return false, nil
 }
+
+// WorkLocationResponse is returned when viewing a user's work location for a date.
+type WorkLocationResponse struct {
+	Date     string `json:"date"`
+	UserID   string `json:"user_id"`
+	Location string `json:"location"`
+}
+
+// GetWorkLocationForDate returns a user's work location for a given date.
+// Defaults to OFFICE if no record exists.
+func GetWorkLocationForDate(discordID, date string) (*WorkLocationResponse, error) {
+	if err := repository.EnsureUserExists(discordID); err != nil {
+		return nil, err
+	}
+
+	location, err := repository.GetWorkLocation(discordID, date)
+	if err != nil {
+		return nil, err
+	}
+
+	return &WorkLocationResponse{
+		Date:     date,
+		UserID:   discordID,
+		Location: location,
+	}, nil
+}
+
+// SetWorkLocationForDate updates a user's work location for a given date.
+// Switching to WFH opts out all meals; switching to OFFICE opts all meals back in.
+func SetWorkLocationForDate(discordID, date, location string) error {
+	if err := repository.EnsureUserExists(discordID); err != nil {
+		return err
+	}
+
+	_, teamID, err := repository.GetUserRole(discordID)
+	if err != nil {
+		return err
+	}
+
+	location = strings.ToUpper(location)
+	if location != "OFFICE" && location != "WFH" {
+		return &ValidationError{fmt.Sprintf("invalid location '%s': must be 'OFFICE' or 'WFH'", location)}
+	}
+
+	locked, err := isPastCutoff(date)
+	if err != nil {
+		return &ValidationError{err.Error()}
+	}
+	if locked {
+		return &ValidationError{"the cutoff time (9pm) has passed — work location can no longer be updated for this date"}
+	}
+
+	mealTypes, err := GetMealTypesForDate(date)
+	if err != nil {
+		return err
+	}
+
+	status := "YES"
+	if location == "WFH" {
+		status = "NO"
+	}
+
+	for _, mt := range mealTypes {
+		if err := repository.SetMealParticipation(discordID, date, mt, status, teamID); err != nil {
+			return err
+		}
+	}
+
+	return repository.SetWorkLocation(discordID, date, location)
+}

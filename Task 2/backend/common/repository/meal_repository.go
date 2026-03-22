@@ -334,3 +334,44 @@ func SetMealTypeForDate(date, mealType, adminID string) error {
 	})
 	return err
 }
+
+// GetWorkLocation returns the stored work location for a user on a given date.
+// Returns "OFFICE" if no record exists (opted in by default).
+func GetWorkLocation(userID, date string) (string, error) {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	result, err := db.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String(table),
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {S: aws.String("DAY#" + date)},
+			"SK": {S: aws.String("LOCATION#USER#" + userID)},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if result.Item == nil {
+		return "OFFICE", nil
+	}
+	if v, ok := result.Item["location"]; ok && v.S != nil {
+		return *v.S, nil
+	}
+	return "OFFICE", nil
+}
+
+// SetWorkLocation stores a user's work location for a given date.
+func SetWorkLocation(userID, date, location string) error {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	_, err := db.PutItem(&dynamodb.PutItemInput{
+		TableName: aws.String(table),
+		Item: map[string]*dynamodb.AttributeValue{
+			"PK":       {S: aws.String("DAY#" + date)},
+			"SK":       {S: aws.String("LOCATION#USER#" + userID)},
+			"location": {S: aws.String(location)},
+		},
+	})
+	return err
+}
