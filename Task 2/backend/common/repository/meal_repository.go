@@ -258,6 +258,67 @@ func GetMealTypesForDate(date string) ([]string, error) {
 	return types, nil
 }
 
+// GetAllParticipationForDate returns explicit participation counts per meal type for a given date.
+// Result is a map of mealType → map of participation status ("YES"/"NO") → count.
+func GetAllParticipationForDate(date string) (map[string]map[string]int, error) {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	out, err := db.Query(&dynamodb.QueryInput{
+		TableName:              aws.String(table),
+		KeyConditionExpression: aws.String("PK = :pk AND begins_with(SK, :prefix)"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk":     {S: aws.String("DAY#" + date)},
+			":prefix": {S: aws.String("TEAM#")},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// SK format: TEAM#<teamId>#MEAL#<mealType>#USER#<userId>
+	result := map[string]map[string]int{}
+	for _, item := range out.Items {
+		sk := *item["SK"].S
+		mealIdx := strings.Index(sk, "#MEAL#")
+		userIdx := strings.Index(sk, "#USER#")
+		if mealIdx < 0 || userIdx <= mealIdx {
+			continue
+		}
+		mealType := sk[mealIdx+6 : userIdx]
+		participation := ""
+		if v, ok := item["participation"]; ok && v.S != nil {
+			participation = *v.S
+		}
+		if result[mealType] == nil {
+			result[mealType] = map[string]int{}
+		}
+		result[mealType][participation]++
+	}
+	return result, nil
+}
+
+// CountAllUsers returns the total number of registered users in the system.
+func CountAllUsers() (int, error) {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	var total int64
+	err := db.ScanPages(&dynamodb.ScanInput{
+		TableName:        aws.String(table),
+		FilterExpression: aws.String("SK = :meta AND begins_with(PK, :user)"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":meta": {S: aws.String("META")},
+			":user": {S: aws.String("USER#")},
+		},
+		Select: aws.String(dynamodb.SelectCount),
+	}, func(page *dynamodb.ScanOutput, _ bool) bool {
+		total += aws.Int64Value(page.Count)
+		return true
+	})
+	return int(total), err
+}
+
 // SetMealTypeForDate adds a meal type configuration for a specific date.
 func SetMealTypeForDate(date, mealType, adminID string) error {
 	db := database.GetDBClient()

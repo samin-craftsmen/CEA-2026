@@ -316,6 +316,61 @@ func AdminSetMealStatus(adminID, targetUserID, date, mealType, status string) er
 	return repository.SetMealParticipation(targetUserID, date, mealType, status, targetTeamID)
 }
 
+type HeadcountEntry struct {
+	Yes int `json:"yes"`
+	No  int `json:"no"`
+}
+
+type HeadcountSummaryResponse struct {
+	Date    string                    `json:"date"`
+	Summary map[string]HeadcountEntry `json:"summary"`
+}
+
+// AdminGetHeadcountSummary returns per-meal-type headcount for a given date.
+// Only admins may call this.
+// Because meals are opted-in by default, YES = total registered users - explicit NO count.
+func AdminGetHeadcountSummary(adminID, date string) (*HeadcountSummaryResponse, error) {
+	role, _, err := repository.GetUserRole(adminID)
+	if err != nil {
+		return nil, err
+	}
+	if role != "ADMIN" {
+		return nil, &ValidationError{"access denied: only admins can perform this action"}
+	}
+
+	totalUsers, err := repository.CountAllUsers()
+	if err != nil {
+		return nil, err
+	}
+
+	counts, err := repository.GetAllParticipationForDate(date)
+	if err != nil {
+		return nil, err
+	}
+
+	mealTypes, err := GetMealTypesForDate(date)
+	if err != nil {
+		return nil, err
+	}
+
+	summary := make(map[string]HeadcountEntry, len(mealTypes))
+	for _, mt := range mealTypes {
+		noCount := 0
+		if c, ok := counts[mt]; ok {
+			noCount = c["NO"]
+		}
+		summary[mt] = HeadcountEntry{
+			Yes: totalUsers - noCount,
+			No:  noCount,
+		}
+	}
+
+	return &HeadcountSummaryResponse{
+		Date:    date,
+		Summary: summary,
+	}, nil
+}
+
 // isPastCutoff reports whether the cutoff for updating the given date has passed.
 // Rules (all times in IST / UTC+5:30):
 //   - Target date is today or in the past → always locked.
