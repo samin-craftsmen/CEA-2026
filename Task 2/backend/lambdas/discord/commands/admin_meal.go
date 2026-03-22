@@ -169,9 +169,15 @@ type headcountEntry struct {
 	No  int `json:"no"`
 }
 
+type workLocationSummary struct {
+	Office int `json:"office"`
+	WFH    int `json:"wfh"`
+}
+
 type adminHeadcountResponse struct {
-	Date    string                    `json:"date"`
-	Summary map[string]headcountEntry `json:"summary"`
+	Date         string                    `json:"date"`
+	WorkLocation workLocationSummary       `json:"work_location"`
+	Summary      map[string]headcountEntry `json:"summary"`
 }
 
 func handleAdminHeadcount(adminID, date string) *types.InteractionResponse {
@@ -184,13 +190,25 @@ func handleAdminHeadcount(adminID, date string) *types.InteractionResponse {
 		return types.ErrorResponse("Failed to fetch headcount: " + err.Error())
 	}
 
+	fields := []types.EmbedField{
+		{
+			Name:   "Work Location",
+			Value:  fmt.Sprintf("🏢 Office: **%d**  |  🏠 WFH: **%d**", result.WorkLocation.Office, result.WorkLocation.WFH),
+			Inline: false,
+		},
+		{
+			Name:   "​",
+			Value:  "**Meal Participation**",
+			Inline: false,
+		},
+	}
+
 	mealTypeKeys := make([]string, 0, len(result.Summary))
 	for mt := range result.Summary {
 		mealTypeKeys = append(mealTypeKeys, mt)
 	}
 	sort.Strings(mealTypeKeys)
 
-	fields := make([]types.EmbedField, 0, len(result.Summary))
 	for _, mt := range mealTypeKeys {
 		entry := result.Summary[mt]
 		fields = append(fields, types.EmbedField{

@@ -360,6 +360,33 @@ func GetWorkLocation(userID, date string) (string, error) {
 	return "OFFICE", nil
 }
 
+// GetWorkLocationCountsForDate returns how many users have each work location explicitly set for a date.
+// Result is a map of location ("OFFICE"/"WFH") → count of explicit records.
+func GetWorkLocationCountsForDate(date string) (map[string]int, error) {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	out, err := db.Query(&dynamodb.QueryInput{
+		TableName:              aws.String(table),
+		KeyConditionExpression: aws.String("PK = :pk AND begins_with(SK, :prefix)"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk":     {S: aws.String("DAY#" + date)},
+			":prefix": {S: aws.String("LOCATION#USER#")},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	counts := map[string]int{}
+	for _, item := range out.Items {
+		if v, ok := item["location"]; ok && v.S != nil {
+			counts[*v.S]++
+		}
+	}
+	return counts, nil
+}
+
 // SetWorkLocation stores a user's work location for a given date.
 func SetWorkLocation(userID, date, location string) error {
 	db := database.GetDBClient()

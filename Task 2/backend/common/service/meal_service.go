@@ -321,9 +321,15 @@ type HeadcountEntry struct {
 	No  int `json:"no"`
 }
 
+type WorkLocationSummary struct {
+	Office int `json:"office"`
+	WFH    int `json:"wfh"`
+}
+
 type HeadcountSummaryResponse struct {
-	Date    string                    `json:"date"`
-	Summary map[string]HeadcountEntry `json:"summary"`
+	Date         string                    `json:"date"`
+	WorkLocation WorkLocationSummary       `json:"work_location"`
+	Summary      map[string]HeadcountEntry `json:"summary"`
 }
 
 // AdminGetHeadcountSummary returns per-meal-type headcount for a given date.
@@ -365,9 +371,23 @@ func AdminGetHeadcountSummary(adminID, date string) (*HeadcountSummaryResponse, 
 		}
 	}
 
+	locationCounts, err := repository.GetWorkLocationCountsForDate(date)
+	if err != nil {
+		return nil, err
+	}
+	// Users with no location record are implicitly OFFICE.
+	explicitWFH := locationCounts["WFH"]
+	explicitOffice := locationCounts["OFFICE"]
+	workLocation := WorkLocationSummary{
+		Office: totalUsers - explicitWFH,
+		WFH:    explicitWFH,
+	}
+	_ = explicitOffice // counted implicitly above
+
 	return &HeadcountSummaryResponse{
-		Date:    date,
-		Summary: summary,
+		Date:         date,
+		WorkLocation: workLocation,
+		Summary:      summary,
 	}, nil
 }
 
