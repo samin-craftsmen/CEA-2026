@@ -191,6 +191,19 @@ func Definitions() []SlashCommandDefinition {
 						},
 					},
 				},
+				{
+					Name:        "headcount",
+					Description: "View headcount summary for a specific date (how many opted in/out per meal type)",
+					Type:        1, // SUB_COMMAND
+					Options: []SlashCommandOption{
+						{
+							Name:        "date",
+							Description: "Date in YYYY-MM-DD format (e.g. 2026-03-15)",
+							Type:        3, // STRING
+							Required:    true,
+						},
+					},
+				},
 			},
 		},
 		{

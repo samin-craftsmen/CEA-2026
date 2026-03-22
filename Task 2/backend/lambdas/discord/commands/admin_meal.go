@@ -16,7 +16,7 @@ func init() {
 // HandleAdminMeal routes /admin-meal subcommands.
 func HandleAdminMeal(data *types.CommandData, userID string) *types.InteractionResponse {
 	if len(data.Options) == 0 {
-		return types.ErrorResponse("Please provide a subcommand. Usage: `/admin-meal view` or `/admin-meal set`")
+		return types.ErrorResponse("Please provide a subcommand. Usage: `/admin-meal view`, `/admin-meal set`, or `/admin-meal headcount`")
 	}
 
 	sub := data.Options[0]
@@ -57,6 +57,17 @@ func HandleAdminMeal(data *types.CommandData, userID string) *types.InteractionR
 			return types.ErrorResponse("Please provide all required options: employee, date, meal_type, and status.")
 		}
 		return handleAdminMealSet(userID, targetUserID, date, mealType, status)
+	case "headcount":
+		var date string
+		for _, opt := range sub.Options {
+			if v, ok := opt.Value.(string); ok && opt.Name == "date" {
+				date = v
+			}
+		}
+		if date == "" {
+			return types.ErrorResponse("Please provide the required option: date.")
+		}
+		return handleAdminHeadcount(userID, date)
 	default:
 		return types.ErrorResponse(fmt.Sprintf("Unknown subcommand: `%s`", sub.Name))
 	}
@@ -145,5 +156,53 @@ func handleAdminMealSet(adminID, targetUserID, date, mealType, status string) *t
 		Description: fmt.Sprintf("%s <@%s> has been %s **%s** on %s.", emoji, targetUserID, optText, capitalize(mealType), date),
 		Color:       types.ColorSuccess,
 		Footer:      &types.EmbedFooter{Text: "Updated by admin: " + adminID},
+	})
+}
+
+type adminHeadcountRequest struct {
+	AdminDiscordID string `json:"admin_discord_id"`
+	Date           string `json:"date"`
+}
+
+type headcountEntry struct {
+	Yes int `json:"yes"`
+	No  int `json:"no"`
+}
+
+type adminHeadcountResponse struct {
+	Date    string                    `json:"date"`
+	Summary map[string]headcountEntry `json:"summary"`
+}
+
+func handleAdminHeadcount(adminID, date string) *types.InteractionResponse {
+	var result adminHeadcountResponse
+	err := client.Post("/meal/admin/headcount", adminHeadcountRequest{
+		AdminDiscordID: adminID,
+		Date:           date,
+	}, &result)
+	if err != nil {
+		return types.ErrorResponse("Failed to fetch headcount: " + err.Error())
+	}
+
+	mealTypeKeys := make([]string, 0, len(result.Summary))
+	for mt := range result.Summary {
+		mealTypeKeys = append(mealTypeKeys, mt)
+	}
+	sort.Strings(mealTypeKeys)
+
+	fields := make([]types.EmbedField, 0, len(result.Summary))
+	for _, mt := range mealTypeKeys {
+		entry := result.Summary[mt]
+		fields = append(fields, types.EmbedField{
+			Name:   capitalize(mt),
+			Value:  fmt.Sprintf("✅ Yes: **%d**  |  ❌ No: **%d**", entry.Yes, entry.No),
+			Inline: false,
+		})
+	}
+
+	return types.EmbedResponse(types.Embed{
+		Title:  "Meal Headcount — " + date,
+		Color:  types.ColorInfo,
+		Fields: fields,
 	})
 }
