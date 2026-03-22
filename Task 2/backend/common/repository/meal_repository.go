@@ -230,3 +230,46 @@ func VerifyTeamMembership(teamID, targetUserID string) (bool, error) {
 	}
 	return result.Item != nil, nil
 }
+
+// GetMealTypesForDate returns additional meal types configured for a specific date.
+func GetMealTypesForDate(date string) ([]string, error) {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	out, err := db.Query(&dynamodb.QueryInput{
+		TableName:              aws.String(table),
+		KeyConditionExpression: aws.String("PK = :pk AND begins_with(SK, :prefix)"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk":     {S: aws.String("DAY#" + date)},
+			":prefix": {S: aws.String("MEALTYPE#")},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var types []string
+	for _, item := range out.Items {
+		sk := *item["SK"].S
+		if strings.HasPrefix(sk, "MEALTYPE#") {
+			types = append(types, sk[9:])
+		}
+	}
+	return types, nil
+}
+
+// SetMealTypeForDate adds a meal type configuration for a specific date.
+func SetMealTypeForDate(date, mealType, adminID string) error {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	_, err := db.PutItem(&dynamodb.PutItemInput{
+		TableName: aws.String(table),
+		Item: map[string]*dynamodb.AttributeValue{
+			"PK":      {S: aws.String("DAY#" + date)},
+			"SK":      {S: aws.String("MEALTYPE#" + mealType)},
+			"addedBy": {S: aws.String(adminID)},
+		},
+	})
+	return err
+}
