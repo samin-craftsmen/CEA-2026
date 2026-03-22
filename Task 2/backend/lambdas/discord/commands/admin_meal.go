@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/samin-craftsmen/meal-headcount-planner-backend/lambdas/discord/client"
@@ -84,12 +85,15 @@ func handleAdminMealView(adminID, targetUserID, date string) *types.InteractionR
 		return types.ErrorResponse("Failed to fetch meal participation: " + err.Error())
 	}
 
+	mealTypeKeys := make([]string, 0, len(result.Meals))
+	for mt := range result.Meals {
+		mealTypeKeys = append(mealTypeKeys, mt)
+	}
+	sort.Strings(mealTypeKeys)
+
 	fields := make([]types.EmbedField, 0, len(result.Meals))
-	for _, mt := range []string{"lunch", "snacks"} {
-		participation, ok := result.Meals[mt]
-		if !ok {
-			continue
-		}
+	for _, mt := range mealTypeKeys {
+		participation := result.Meals[mt]
 		emoji := "✅"
 		if strings.EqualFold(participation, "NO") {
 			emoji = "❌"

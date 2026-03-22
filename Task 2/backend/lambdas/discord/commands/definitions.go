@@ -10,12 +10,13 @@ type SlashCommandDefinition struct {
 }
 
 type SlashCommandOption struct {
-	Name        string               `json:"name"`
-	Description string               `json:"description"`
-	Type        int                  `json:"type"`
-	Required    bool                 `json:"required,omitempty"`
-	Options     []SlashCommandOption `json:"options,omitempty"`
-	Choices     []SlashCommandChoice `json:"choices,omitempty"`
+	Name         string               `json:"name"`
+	Description  string               `json:"description"`
+	Type         int                  `json:"type"`
+	Required     bool                 `json:"required,omitempty"`
+	Autocomplete bool                 `json:"autocomplete,omitempty"`
+	Options      []SlashCommandOption `json:"options,omitempty"`
+	Choices      []SlashCommandChoice `json:"choices,omitempty"`
 }
 
 type SlashCommandChoice struct {
@@ -56,14 +57,11 @@ func Definitions() []SlashCommandDefinition {
 							Required:    true,
 						},
 						{
-							Name:        "meal_type",
-							Description: "The meal to update",
-							Type:        3, // STRING
-							Required:    true,
-							Choices: []SlashCommandChoice{
-								{Name: "Lunch", Value: "lunch"},
-								{Name: "Snacks", Value: "snacks"},
-							},
+							Name:         "meal_type",
+							Description:  "The meal to update (e.g. lunch, snacks, dinner)",
+							Type:         3, // STRING
+							Required:     true,
+							Autocomplete: true,
 						},
 						{
 							Name:        "status",
@@ -114,14 +112,11 @@ func Definitions() []SlashCommandDefinition {
 							Required:    true,
 						},
 						{
-							Name:        "meal_type",
-							Description: "The meal to update",
-							Type:        3, // STRING
-							Required:    true,
-							Choices: []SlashCommandChoice{
-								{Name: "Lunch", Value: "lunch"},
-								{Name: "Snacks", Value: "snacks"},
-							},
+							Name:         "meal_type",
+							Description:  "The meal to update (e.g. lunch, snacks, dinner)",
+							Type:         3, // STRING
+							Required:     true,
+							Autocomplete: true,
 						},
 						{
 							Name:        "status",
@@ -178,14 +173,11 @@ func Definitions() []SlashCommandDefinition {
 							Required:    true,
 						},
 						{
-							Name:        "meal_type",
-							Description: "The meal to update",
-							Type:        3, // STRING
-							Required:    true,
-							Choices: []SlashCommandChoice{
-								{Name: "Lunch", Value: "lunch"},
-								{Name: "Snacks", Value: "snacks"},
-							},
+							Name:         "meal_type",
+							Description:  "The meal to update (e.g. lunch, snacks, dinner)",
+							Type:         3, // STRING
+							Required:     true,
+							Autocomplete: true,
 						},
 						{
 							Name:        "status",
@@ -196,6 +188,44 @@ func Definitions() []SlashCommandDefinition {
 								{Name: "YES — Opt in", Value: "YES"},
 								{Name: "NO — Opt out", Value: "NO"},
 							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Name:        "meal-type",
+			Description: "Manage meal types for a specific date (Admin only)",
+			Options: []SlashCommandOption{
+				{
+					Name:        "view",
+					Description: "View available meal types for a specific date",
+					Type:        1, // SUB_COMMAND
+					Options: []SlashCommandOption{
+						{
+							Name:        "date",
+							Description: "Date in YYYY-MM-DD format (e.g. 2026-03-15)",
+							Type:        3, // STRING
+							Required:    true,
+						},
+					},
+				},
+				{
+					Name:        "add",
+					Description: "Add a new meal type for a specific date",
+					Type:        1, // SUB_COMMAND
+					Options: []SlashCommandOption{
+						{
+							Name:        "date",
+							Description: "Date in YYYY-MM-DD format (e.g. 2026-03-15)",
+							Type:        3, // STRING
+							Required:    true,
+						},
+						{
+							Name:        "meal_type",
+							Description: "Name of the meal type to add (e.g. dinner, iftar)",
+							Type:        3, // STRING
+							Required:    true,
 						},
 					},
 				},

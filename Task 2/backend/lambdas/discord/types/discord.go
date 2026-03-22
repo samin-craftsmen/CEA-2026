@@ -4,6 +4,7 @@ package types
 const (
 	InteractionTypePing               = 1
 	InteractionTypeApplicationCommand = 2
+	InteractionTypeAutocomplete       = 4
 )
 
 // Interaction callback types for responses.
@@ -11,6 +12,7 @@ const (
 	CallbackTypePong                     = 1
 	CallbackTypeChannelMessageWithSource = 4
 	CallbackTypeDeferredChannelMessage   = 5
+	CallbackTypeAutocompleteResult       = 8
 )
 
 // Embed colors.
@@ -43,6 +45,12 @@ type CommandOption struct {
 	Type    int             `json:"type"`
 	Value   interface{}     `json:"value,omitempty"`
 	Options []CommandOption `json:"options,omitempty"`
+	Focused bool            `json:"focused,omitempty"`
+}
+
+type AutocompleteChoice struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 type Member struct {
@@ -62,9 +70,10 @@ type InteractionResponse struct {
 }
 
 type InteractionResponseData struct {
-	Content string  `json:"content,omitempty"`
-	Embeds  []Embed `json:"embeds,omitempty"`
-	Flags   int     `json:"flags,omitempty"`
+	Content string               `json:"content,omitempty"`
+	Embeds  []Embed              `json:"embeds,omitempty"`
+	Flags   int                  `json:"flags,omitempty"`
+	Choices []AutocompleteChoice `json:"choices,omitempty"`
 }
 
 type Embed struct {
@@ -128,5 +137,12 @@ func ErrorResponse(message string) *InteractionResponse {
 			}},
 			Flags: 64, // Ephemeral – only visible to the invoking user
 		},
+	}
+}
+
+func AutocompleteResponse(choices []AutocompleteChoice) *InteractionResponse {
+	return &InteractionResponse{
+		Type: CallbackTypeAutocompleteResult,
+		Data: &InteractionResponseData{Choices: choices},
 	}
 }
