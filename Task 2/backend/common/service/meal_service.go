@@ -568,6 +568,49 @@ func optOutAllMealsForDate(date string) error {
 	return nil
 }
 
+// GetHeadcountSummaryForDate returns the headcount summary for a date without role enforcement.
+// Intended for internal/scheduled use only (e.g. the nightly EventBridge notification).
+func GetHeadcountSummaryForDate(date string) (*HeadcountSummaryResponse, error) {
+	totalUsers, err := repository.CountAllUsers()
+	if err != nil {
+		return nil, err
+	}
+
+	counts, err := repository.GetAllParticipationForDate(date)
+	if err != nil {
+		return nil, err
+	}
+
+	mealTypes, err := GetMealTypesForDate(date)
+	if err != nil {
+		return nil, err
+	}
+
+	summary := make(map[string]HeadcountEntry, len(mealTypes))
+	for _, mt := range mealTypes {
+		noCount := 0
+		if c, ok := counts[mt]; ok {
+			noCount = c["NO"]
+		}
+		summary[mt] = HeadcountEntry{
+			Yes: totalUsers - noCount,
+			No:  noCount,
+		}
+	}
+
+	locationCounts, err := repository.GetWorkLocationCountsForDate(date)
+	if err != nil {
+		return nil, err
+	}
+	explicitWFH := locationCounts["WFH"]
+
+	return &HeadcountSummaryResponse{
+		Date:         date,
+		WorkLocation: WorkLocationSummary{Office: totalUsers - explicitWFH, WFH: explicitWFH},
+		Summary:      summary,
+	}, nil
+}
+
 // GetDayStatusForDate returns the administrative status for a given date.
 // Returns Type="NORMAL" when no status has been set.
 func GetDayStatusForDate(date string) (*DayStatusResponse, error) {
