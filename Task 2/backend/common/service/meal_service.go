@@ -493,3 +493,95 @@ func SetWorkLocationForDate(discordID, date, location string) error {
 
 	return repository.SetWorkLocation(discordID, date, location)
 }
+
+// Day status type constants.
+const (
+	DayStatusGovernmentHoliday = "GOVERNMENT_HOLIDAY"
+	DayStatusOfficeClosed      = "OFFICE_CLOSED"
+	DayStatusSpecialEvent      = "SPECIAL_EVENT"
+)
+
+// DayStatusResponse is returned when viewing the status of a specific day.
+type DayStatusResponse struct {
+	Date  string `json:"date"`
+	Type  string `json:"type"`
+	Note  string `json:"note,omitempty"`
+	SetBy string `json:"set_by,omitempty"`
+}
+
+// AdminSetDayStatus sets the administrative status for a specific day. Only admins may call this.
+// GOVERNMENT_HOLIDAY and SPECIAL_EVENT only update the day status marker.
+// OFFICE_CLOSED additionally opts out all registered users from every meal on that date.
+// A non-empty note is required for SPECIAL_EVENT.
+func AdminSetDayStatus(adminID, date, statusType, note string) error {
+	role, _, err := repository.GetUserRole(adminID)
+	if err != nil {
+		return err
+	}
+	if role != "ADMIN" {
+		return &ValidationError{"access denied: only admins can perform this action"}
+	}
+
+	switch statusType {
+	case DayStatusGovernmentHoliday, DayStatusOfficeClosed, DayStatusSpecialEvent:
+		// valid
+	default:
+		return &ValidationError{fmt.Sprintf("invalid status type '%s': must be GOVERNMENT_HOLIDAY, OFFICE_CLOSED, or SPECIAL_EVENT", statusType)}
+	}
+
+	if statusType == DayStatusSpecialEvent && strings.TrimSpace(note) == "" {
+		return &ValidationError{"a note is required for SPECIAL_EVENT day status"}
+	}
+
+	if statusType == DayStatusOfficeClosed {
+		if err := optOutAllMealsForDate(date); err != nil {
+			return err
+		}
+	}
+
+	return repository.SetDayStatus(date, statusType, note, adminID)
+}
+
+// optOutAllMealsForDate sets all meal participation records to NO for every registered user on the given date.
+func optOutAllMealsForDate(date string) error {
+	allUsers, err := repository.GetAllUserIDs()
+	if err != nil {
+		return err
+	}
+
+	mealTypes, err := GetMealTypesForDate(date)
+	if err != nil {
+		return err
+	}
+
+	for _, userID := range allUsers {
+		_, teamID, err := repository.GetUserRole(userID)
+		if err != nil {
+			continue // skip users without a valid role/team record
+		}
+		for _, mt := range mealTypes {
+			if err := repository.SetMealParticipation(userID, date, mt, "NO", teamID); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// GetDayStatusForDate returns the administrative status for a given date.
+// Returns Type="NORMAL" when no status has been set.
+func GetDayStatusForDate(date string) (*DayStatusResponse, error) {
+	ds, err := repository.GetDayStatus(date)
+	if err != nil {
+		return nil, err
+	}
+	if ds == nil {
+		return &DayStatusResponse{Date: date, Type: "NORMAL"}, nil
+	}
+	return &DayStatusResponse{
+		Date:  date,
+		Type:  ds.Type,
+		Note:  ds.Note,
+		SetBy: ds.SetBy,
+	}, nil
+}
