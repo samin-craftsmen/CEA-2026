@@ -230,3 +230,107 @@ func VerifyTeamMembership(teamID, targetUserID string) (bool, error) {
 	}
 	return result.Item != nil, nil
 }
+
+// GetMealTypesForDate returns additional meal types configured for a specific date.
+func GetMealTypesForDate(date string) ([]string, error) {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	out, err := db.Query(&dynamodb.QueryInput{
+		TableName:              aws.String(table),
+		KeyConditionExpression: aws.String("PK = :pk AND begins_with(SK, :prefix)"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk":     {S: aws.String("DAY#" + date)},
+			":prefix": {S: aws.String("MEALTYPE#")},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var types []string
+	for _, item := range out.Items {
+		sk := *item["SK"].S
+		if strings.HasPrefix(sk, "MEALTYPE#") {
+			types = append(types, sk[9:])
+		}
+	}
+	return types, nil
+}
+
+// GetAllParticipationForDate returns explicit participation counts per meal type for a given date.
+// Result is a map of mealType → map of participation status ("YES"/"NO") → count.
+func GetAllParticipationForDate(date string) (map[string]map[string]int, error) {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	out, err := db.Query(&dynamodb.QueryInput{
+		TableName:              aws.String(table),
+		KeyConditionExpression: aws.String("PK = :pk AND begins_with(SK, :prefix)"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk":     {S: aws.String("DAY#" + date)},
+			":prefix": {S: aws.String("TEAM#")},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// SK format: TEAM#<teamId>#MEAL#<mealType>#USER#<userId>
+	result := map[string]map[string]int{}
+	for _, item := range out.Items {
+		sk := *item["SK"].S
+		mealIdx := strings.Index(sk, "#MEAL#")
+		userIdx := strings.Index(sk, "#USER#")
+		if mealIdx < 0 || userIdx <= mealIdx {
+			continue
+		}
+		mealType := sk[mealIdx+6 : userIdx]
+		participation := ""
+		if v, ok := item["participation"]; ok && v.S != nil {
+			participation = *v.S
+		}
+		if result[mealType] == nil {
+			result[mealType] = map[string]int{}
+		}
+		result[mealType][participation]++
+	}
+	return result, nil
+}
+
+// CountAllUsers returns the total number of registered users in the system.
+func CountAllUsers() (int, error) {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	var total int64
+	err := db.ScanPages(&dynamodb.ScanInput{
+		TableName:        aws.String(table),
+		FilterExpression: aws.String("SK = :meta AND begins_with(PK, :user)"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":meta": {S: aws.String("META")},
+			":user": {S: aws.String("USER#")},
+		},
+		Select: aws.String(dynamodb.SelectCount),
+	}, func(page *dynamodb.ScanOutput, _ bool) bool {
+		total += aws.Int64Value(page.Count)
+		return true
+	})
+	return int(total), err
+}
+
+// SetMealTypeForDate adds a meal type configuration for a specific date.
+func SetMealTypeForDate(date, mealType, adminID string) error {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	_, err := db.PutItem(&dynamodb.PutItemInput{
+		TableName: aws.String(table),
+		Item: map[string]*dynamodb.AttributeValue{
+			"PK":      {S: aws.String("DAY#" + date)},
+			"SK":      {S: aws.String("MEALTYPE#" + mealType)},
+			"addedBy": {S: aws.String(adminID)},
+		},
+	})
+	return err
+}

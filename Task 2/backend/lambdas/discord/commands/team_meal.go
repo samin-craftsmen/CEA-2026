@@ -105,12 +105,15 @@ func handleTeamMealView(teamLeadID, date string) *types.InteractionResponse {
 
 	for _, memberID := range memberIDs {
 		meals := result.Members[memberID]
+		mealTypeKeys := make([]string, 0, len(meals))
+		for mt := range meals {
+			mealTypeKeys = append(mealTypeKeys, mt)
+		}
+		sort.Strings(mealTypeKeys)
+
 		parts := make([]string, 0, len(meals))
-		for _, mt := range []string{"lunch", "snacks"} {
-			status, ok := meals[mt]
-			if !ok {
-				continue
-			}
+		for _, mt := range mealTypeKeys {
+			status := meals[mt]
 			emoji := "✅"
 			if strings.EqualFold(status, "NO") {
 				emoji = "❌"

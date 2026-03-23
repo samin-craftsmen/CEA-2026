@@ -12,6 +12,8 @@ func RouteInteraction(interaction *types.Interaction) *types.InteractionResponse
 		return types.PongResponse()
 	case types.InteractionTypeApplicationCommand:
 		return handleCommand(interaction)
+	case types.InteractionTypeAutocomplete:
+		return handleAutocomplete(interaction)
 	default:
 		return types.ErrorResponse("Unsupported interaction type")
 	}

@@ -24,9 +24,14 @@ func GetMealView(discordID string, date string) (*MealViewResponse, error) {
 		return nil, err
 	}
 
-	result := map[string]string{
-		"lunch":  "YES",
-		"snacks": "YES",
+	mealTypes, err := GetMealTypesForDate(date)
+	if err != nil {
+		return nil, err
+	}
+
+	result := map[string]string{}
+	for _, mt := range mealTypes {
+		result[mt] = "YES"
 	}
 	for mealType, participation := range meals {
 		result[mealType] = participation
@@ -59,8 +64,8 @@ func SetMealStatus(discordID, date, mealType, status string) error {
 	}
 
 	mealType = strings.ToLower(mealType)
-	if mealType != "lunch" && mealType != "snacks" {
-		return &ValidationError{fmt.Sprintf("invalid meal type '%s': must be 'lunch' or 'snacks'", mealType)}
+	if err := validateMealType(mealType, date); err != nil {
+		return err
 	}
 
 	status = strings.ToUpper(status)
@@ -85,8 +90,64 @@ type TeamMealViewResponse struct {
 	Members map[string]map[string]string `json:"members"`
 }
 
-// mealTypes lists all supported meal types used to fill in defaults.
-var mealTypes = []string{"lunch", "snacks"}
+// defaultMealTypes lists the meal types available for every date.
+var defaultMealTypes = []string{"lunch", "snacks"}
+
+// GetMealTypesForDate returns the effective meal types for a date (defaults + date-specific additions).
+func GetMealTypesForDate(date string) ([]string, error) {
+	extra, err := repository.GetMealTypesForDate(date)
+	if err != nil {
+		return nil, err
+	}
+
+	seen := make(map[string]bool)
+	var result []string
+	for _, mt := range defaultMealTypes {
+		if !seen[mt] {
+			seen[mt] = true
+			result = append(result, mt)
+		}
+	}
+	for _, mt := range extra {
+		if !seen[mt] {
+			seen[mt] = true
+			result = append(result, mt)
+		}
+	}
+	return result, nil
+}
+
+// validateMealType checks if the given meal type is valid for the specified date.
+func validateMealType(mealType, date string) error {
+	types, err := GetMealTypesForDate(date)
+	if err != nil {
+		return err
+	}
+	for _, mt := range types {
+		if mt == mealType {
+			return nil
+		}
+	}
+	return &ValidationError{fmt.Sprintf("invalid meal type '%s' for date %s: available types are %s", mealType, date, strings.Join(types, ", "))}
+}
+
+// AdminAddMealType adds a meal type for a specific date. Only admins can perform this action.
+func AdminAddMealType(adminID, date, mealType string) error {
+	role, _, err := repository.GetUserRole(adminID)
+	if err != nil {
+		return err
+	}
+	if role != "ADMIN" {
+		return &ValidationError{"access denied: only admins can perform this action"}
+	}
+
+	mealType = strings.ToLower(mealType)
+	if mealType == "" {
+		return &ValidationError{"meal type cannot be empty"}
+	}
+
+	return repository.SetMealTypeForDate(date, mealType, adminID)
+}
 
 // TeamLeadGetMealView returns meal participation for all members of the team lead's team on a given date.
 // Any meal type not explicitly recorded defaults to YES.
@@ -105,6 +166,11 @@ func TeamLeadGetMealView(teamLeadID, date string) (*TeamMealViewResponse, error)
 	}
 
 	existing, err := repository.GetTeamMeals(teamID, date)
+	if err != nil {
+		return nil, err
+	}
+
+	mealTypes, err := GetMealTypesForDate(date)
 	if err != nil {
 		return nil, err
 	}
@@ -151,8 +217,8 @@ func TeamLeadSetMealStatus(teamLeadID, targetUserID, date, mealType, status stri
 	}
 
 	mealType = strings.ToLower(mealType)
-	if mealType != "lunch" && mealType != "snacks" {
-		return &ValidationError{fmt.Sprintf("invalid meal type '%s': must be 'lunch' or 'snacks'", mealType)}
+	if err := validateMealType(mealType, date); err != nil {
+		return err
 	}
 
 	status = strings.ToUpper(status)
@@ -193,6 +259,11 @@ func AdminGetMealView(adminID, targetUserID, date string) (*AdminMealViewRespons
 		return nil, err
 	}
 
+	mealTypes, err := GetMealTypesForDate(date)
+	if err != nil {
+		return nil, err
+	}
+
 	result := map[string]string{}
 	for _, mt := range mealTypes {
 		result[mt] = "YES"
@@ -220,8 +291,8 @@ func AdminSetMealStatus(adminID, targetUserID, date, mealType, status string) er
 	}
 
 	mealType = strings.ToLower(mealType)
-	if mealType != "lunch" && mealType != "snacks" {
-		return &ValidationError{fmt.Sprintf("invalid meal type '%s': must be 'lunch' or 'snacks'", mealType)}
+	if err := validateMealType(mealType, date); err != nil {
+		return err
 	}
 
 	status = strings.ToUpper(status)
@@ -243,6 +314,61 @@ func AdminSetMealStatus(adminID, targetUserID, date, mealType, status string) er
 	}
 
 	return repository.SetMealParticipation(targetUserID, date, mealType, status, targetTeamID)
+}
+
+type HeadcountEntry struct {
+	Yes int `json:"yes"`
+	No  int `json:"no"`
+}
+
+type HeadcountSummaryResponse struct {
+	Date    string                    `json:"date"`
+	Summary map[string]HeadcountEntry `json:"summary"`
+}
+
+// AdminGetHeadcountSummary returns per-meal-type headcount for a given date.
+// Only admins may call this.
+// Because meals are opted-in by default, YES = total registered users - explicit NO count.
+func AdminGetHeadcountSummary(adminID, date string) (*HeadcountSummaryResponse, error) {
+	role, _, err := repository.GetUserRole(adminID)
+	if err != nil {
+		return nil, err
+	}
+	if role != "ADMIN" {
+		return nil, &ValidationError{"access denied: only admins can perform this action"}
+	}
+
+	totalUsers, err := repository.CountAllUsers()
+	if err != nil {
+		return nil, err
+	}
+
+	counts, err := repository.GetAllParticipationForDate(date)
+	if err != nil {
+		return nil, err
+	}
+
+	mealTypes, err := GetMealTypesForDate(date)
+	if err != nil {
+		return nil, err
+	}
+
+	summary := make(map[string]HeadcountEntry, len(mealTypes))
+	for _, mt := range mealTypes {
+		noCount := 0
+		if c, ok := counts[mt]; ok {
+			noCount = c["NO"]
+		}
+		summary[mt] = HeadcountEntry{
+			Yes: totalUsers - noCount,
+			No:  noCount,
+		}
+	}
+
+	return &HeadcountSummaryResponse{
+		Date:    date,
+		Summary: summary,
+	}, nil
 }
 
 // isPastCutoff reports whether the cutoff for updating the given date has passed.
