@@ -334,3 +334,158 @@ func SetMealTypeForDate(date, mealType, adminID string) error {
 	})
 	return err
 }
+
+// GetWorkLocation returns the stored work location for a user on a given date.
+// Returns "OFFICE" if no record exists (opted in by default).
+func GetWorkLocation(userID, date string) (string, error) {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	result, err := db.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String(table),
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {S: aws.String("DAY#" + date)},
+			"SK": {S: aws.String("LOCATION#USER#" + userID)},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if result.Item == nil {
+		return "OFFICE", nil
+	}
+	if v, ok := result.Item["location"]; ok && v.S != nil {
+		return *v.S, nil
+	}
+	return "OFFICE", nil
+}
+
+// GetWorkLocationCountsForDate returns how many users have each work location explicitly set for a date.
+// Result is a map of location ("OFFICE"/"WFH") → count of explicit records.
+func GetWorkLocationCountsForDate(date string) (map[string]int, error) {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	out, err := db.Query(&dynamodb.QueryInput{
+		TableName:              aws.String(table),
+		KeyConditionExpression: aws.String("PK = :pk AND begins_with(SK, :prefix)"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":pk":     {S: aws.String("DAY#" + date)},
+			":prefix": {S: aws.String("LOCATION#USER#")},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	counts := map[string]int{}
+	for _, item := range out.Items {
+		if v, ok := item["location"]; ok && v.S != nil {
+			counts[*v.S]++
+		}
+	}
+	return counts, nil
+}
+
+// SetWorkLocation stores a user's work location for a given date.
+func SetWorkLocation(userID, date, location string) error {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	_, err := db.PutItem(&dynamodb.PutItemInput{
+		TableName: aws.String(table),
+		Item: map[string]*dynamodb.AttributeValue{
+			"PK":       {S: aws.String("DAY#" + date)},
+			"SK":       {S: aws.String("LOCATION#USER#" + userID)},
+			"location": {S: aws.String(location)},
+		},
+	})
+	return err
+}
+
+// DayStatus holds the administrative status for a specific day.
+type DayStatus struct {
+	Type  string // GOVERNMENT_HOLIDAY | OFFICE_CLOSED | SPECIAL_EVENT
+	Note  string // populated for SPECIAL_EVENT
+	SetBy string // admin Discord ID
+}
+
+// SetDayStatus stores the administrative status for a given date.
+func SetDayStatus(date, statusType, note, adminID string) error {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	item := map[string]*dynamodb.AttributeValue{
+		"PK":    {S: aws.String("DAY#" + date)},
+		"SK":    {S: aws.String("STATUS")},
+		"type":  {S: aws.String(statusType)},
+		"setBy": {S: aws.String(adminID)},
+	}
+	if note != "" {
+		item["note"] = &dynamodb.AttributeValue{S: aws.String(note)}
+	}
+
+	_, err := db.PutItem(&dynamodb.PutItemInput{
+		TableName: aws.String(table),
+		Item:      item,
+	})
+	return err
+}
+
+// GetDayStatus returns the administrative status for a given date.
+// Returns nil if no status has been set.
+func GetDayStatus(date string) (*DayStatus, error) {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	result, err := db.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String(table),
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {S: aws.String("DAY#" + date)},
+			"SK": {S: aws.String("STATUS")},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if result.Item == nil {
+		return nil, nil
+	}
+
+	ds := &DayStatus{}
+	if v, ok := result.Item["type"]; ok && v.S != nil {
+		ds.Type = *v.S
+	}
+	if v, ok := result.Item["note"]; ok && v.S != nil {
+		ds.Note = *v.S
+	}
+	if v, ok := result.Item["setBy"]; ok && v.S != nil {
+		ds.SetBy = *v.S
+	}
+	return ds, nil
+}
+
+// GetAllUserIDs returns Discord IDs for all registered users.
+func GetAllUserIDs() ([]string, error) {
+	db := database.GetDBClient()
+	table := database.GetTableName()
+
+	var users []string
+	err := db.ScanPages(&dynamodb.ScanInput{
+		TableName:        aws.String(table),
+		FilterExpression: aws.String("SK = :meta AND begins_with(PK, :user)"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":meta": {S: aws.String("META")},
+			":user": {S: aws.String("USER#")},
+		},
+		ProjectionExpression: aws.String("PK"),
+	}, func(page *dynamodb.ScanOutput, _ bool) bool {
+		for _, item := range page.Items {
+			if v, ok := item["PK"]; ok && v.S != nil {
+				users = append(users, strings.TrimPrefix(*v.S, "USER#"))
+			}
+		}
+		return true
+	})
+	return users, err
+}

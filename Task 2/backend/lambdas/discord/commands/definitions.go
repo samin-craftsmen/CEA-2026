@@ -207,6 +207,48 @@ func Definitions() []SlashCommandDefinition {
 			},
 		},
 		{
+			Name:        "work-location",
+			Description: "Manage your work location (Office/WFH)",
+			Options: []SlashCommandOption{
+				{
+					Name:        "view",
+					Description: "View your work location for a specific date",
+					Type:        1, // SUB_COMMAND
+					Options: []SlashCommandOption{
+						{
+							Name:        "date",
+							Description: "Date in YYYY-MM-DD format (e.g. 2026-03-15)",
+							Type:        3, // STRING
+							Required:    true,
+						},
+					},
+				},
+				{
+					Name:        "set",
+					Description: "Set your work location for a specific date (before 9pm cutoff)",
+					Type:        1, // SUB_COMMAND
+					Options: []SlashCommandOption{
+						{
+							Name:        "date",
+							Description: "Date in YYYY-MM-DD format (e.g. 2026-03-15)",
+							Type:        3, // STRING
+							Required:    true,
+						},
+						{
+							Name:        "location",
+							Description: "Your work location",
+							Type:        3, // STRING
+							Required:    true,
+							Choices: []SlashCommandChoice{
+								{Name: "🏢 Office", Value: "OFFICE"},
+								{Name: "🏠 Work from Home", Value: "WFH"},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
 			Name:        "meal-type",
 			Description: "Manage meal types for a specific date (Admin only)",
 			Options: []SlashCommandOption{
@@ -237,6 +279,55 @@ func Definitions() []SlashCommandDefinition {
 						{
 							Name:        "meal_type",
 							Description: "Name of the meal type to add (e.g. dinner, iftar)",
+							Type:        3, // STRING
+							Required:    true,
+						},
+					},
+				},
+			},
+		},
+		{
+			Name:        "day-status",
+			Description: "Manage the status of a specific day (Admin only)",
+			Options: []SlashCommandOption{
+				{
+					Name:        "set",
+					Description: "Set the status for a specific day",
+					Type:        1, // SUB_COMMAND
+					Options: []SlashCommandOption{
+						{
+							Name:        "date",
+							Description: "Date in YYYY-MM-DD format (e.g. 2026-03-15)",
+							Type:        3, // STRING
+							Required:    true,
+						},
+						{
+							Name:        "type",
+							Description: "Type of day status",
+							Type:        3, // STRING
+							Required:    true,
+							Choices: []SlashCommandChoice{
+								{Name: "🏛️ Government Holiday", Value: "GOVERNMENT_HOLIDAY"},
+								{Name: "🔒 Office Closed", Value: "OFFICE_CLOSED"},
+								{Name: "🎉 Special Event", Value: "SPECIAL_EVENT"},
+							},
+						},
+						{
+							Name:        "note",
+							Description: "Additional note (required for Special Event)",
+							Type:        3, // STRING
+							Required:    false,
+						},
+					},
+				},
+				{
+					Name:        "view",
+					Description: "View the status of a specific day",
+					Type:        1, // SUB_COMMAND
+					Options: []SlashCommandOption{
+						{
+							Name:        "date",
+							Description: "Date in YYYY-MM-DD format (e.g. 2026-03-15)",
 							Type:        3, // STRING
 							Required:    true,
 						},

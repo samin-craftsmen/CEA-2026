@@ -321,9 +321,15 @@ type HeadcountEntry struct {
 	No  int `json:"no"`
 }
 
+type WorkLocationSummary struct {
+	Office int `json:"office"`
+	WFH    int `json:"wfh"`
+}
+
 type HeadcountSummaryResponse struct {
-	Date    string                    `json:"date"`
-	Summary map[string]HeadcountEntry `json:"summary"`
+	Date         string                    `json:"date"`
+	WorkLocation WorkLocationSummary       `json:"work_location"`
+	Summary      map[string]HeadcountEntry `json:"summary"`
 }
 
 // AdminGetHeadcountSummary returns per-meal-type headcount for a given date.
@@ -365,9 +371,23 @@ func AdminGetHeadcountSummary(adminID, date string) (*HeadcountSummaryResponse, 
 		}
 	}
 
+	locationCounts, err := repository.GetWorkLocationCountsForDate(date)
+	if err != nil {
+		return nil, err
+	}
+	// Users with no location record are implicitly OFFICE.
+	explicitWFH := locationCounts["WFH"]
+	explicitOffice := locationCounts["OFFICE"]
+	workLocation := WorkLocationSummary{
+		Office: totalUsers - explicitWFH,
+		WFH:    explicitWFH,
+	}
+	_ = explicitOffice // counted implicitly above
+
 	return &HeadcountSummaryResponse{
-		Date:    date,
-		Summary: summary,
+		Date:         date,
+		WorkLocation: workLocation,
+		Summary:      summary,
 	}, nil
 }
 
@@ -402,4 +422,166 @@ func isPastCutoff(date string) (bool, error) {
 
 	// Day after tomorrow or further: not locked
 	return false, nil
+}
+
+// WorkLocationResponse is returned when viewing a user's work location for a date.
+type WorkLocationResponse struct {
+	Date     string `json:"date"`
+	UserID   string `json:"user_id"`
+	Location string `json:"location"`
+}
+
+// GetWorkLocationForDate returns a user's work location for a given date.
+// Defaults to OFFICE if no record exists.
+func GetWorkLocationForDate(discordID, date string) (*WorkLocationResponse, error) {
+	if err := repository.EnsureUserExists(discordID); err != nil {
+		return nil, err
+	}
+
+	location, err := repository.GetWorkLocation(discordID, date)
+	if err != nil {
+		return nil, err
+	}
+
+	return &WorkLocationResponse{
+		Date:     date,
+		UserID:   discordID,
+		Location: location,
+	}, nil
+}
+
+// SetWorkLocationForDate updates a user's work location for a given date.
+// Switching to WFH opts out all meals; switching to OFFICE opts all meals back in.
+func SetWorkLocationForDate(discordID, date, location string) error {
+	if err := repository.EnsureUserExists(discordID); err != nil {
+		return err
+	}
+
+	_, teamID, err := repository.GetUserRole(discordID)
+	if err != nil {
+		return err
+	}
+
+	location = strings.ToUpper(location)
+	if location != "OFFICE" && location != "WFH" {
+		return &ValidationError{fmt.Sprintf("invalid location '%s': must be 'OFFICE' or 'WFH'", location)}
+	}
+
+	locked, err := isPastCutoff(date)
+	if err != nil {
+		return &ValidationError{err.Error()}
+	}
+	if locked {
+		return &ValidationError{"the cutoff time (9pm) has passed — work location can no longer be updated for this date"}
+	}
+
+	mealTypes, err := GetMealTypesForDate(date)
+	if err != nil {
+		return err
+	}
+
+	status := "YES"
+	if location == "WFH" {
+		status = "NO"
+	}
+
+	for _, mt := range mealTypes {
+		if err := repository.SetMealParticipation(discordID, date, mt, status, teamID); err != nil {
+			return err
+		}
+	}
+
+	return repository.SetWorkLocation(discordID, date, location)
+}
+
+// Day status type constants.
+const (
+	DayStatusGovernmentHoliday = "GOVERNMENT_HOLIDAY"
+	DayStatusOfficeClosed      = "OFFICE_CLOSED"
+	DayStatusSpecialEvent      = "SPECIAL_EVENT"
+)
+
+// DayStatusResponse is returned when viewing the status of a specific day.
+type DayStatusResponse struct {
+	Date  string `json:"date"`
+	Type  string `json:"type"`
+	Note  string `json:"note,omitempty"`
+	SetBy string `json:"set_by,omitempty"`
+}
+
+// AdminSetDayStatus sets the administrative status for a specific day. Only admins may call this.
+// GOVERNMENT_HOLIDAY and SPECIAL_EVENT only update the day status marker.
+// OFFICE_CLOSED additionally opts out all registered users from every meal on that date.
+// A non-empty note is required for SPECIAL_EVENT.
+func AdminSetDayStatus(adminID, date, statusType, note string) error {
+	role, _, err := repository.GetUserRole(adminID)
+	if err != nil {
+		return err
+	}
+	if role != "ADMIN" {
+		return &ValidationError{"access denied: only admins can perform this action"}
+	}
+
+	switch statusType {
+	case DayStatusGovernmentHoliday, DayStatusOfficeClosed, DayStatusSpecialEvent:
+		// valid
+	default:
+		return &ValidationError{fmt.Sprintf("invalid status type '%s': must be GOVERNMENT_HOLIDAY, OFFICE_CLOSED, or SPECIAL_EVENT", statusType)}
+	}
+
+	if statusType == DayStatusSpecialEvent && strings.TrimSpace(note) == "" {
+		return &ValidationError{"a note is required for SPECIAL_EVENT day status"}
+	}
+
+	if statusType == DayStatusOfficeClosed {
+		if err := optOutAllMealsForDate(date); err != nil {
+			return err
+		}
+	}
+
+	return repository.SetDayStatus(date, statusType, note, adminID)
+}
+
+// optOutAllMealsForDate sets all meal participation records to NO for every registered user on the given date.
+func optOutAllMealsForDate(date string) error {
+	allUsers, err := repository.GetAllUserIDs()
+	if err != nil {
+		return err
+	}
+
+	mealTypes, err := GetMealTypesForDate(date)
+	if err != nil {
+		return err
+	}
+
+	for _, userID := range allUsers {
+		_, teamID, err := repository.GetUserRole(userID)
+		if err != nil {
+			continue // skip users without a valid role/team record
+		}
+		for _, mt := range mealTypes {
+			if err := repository.SetMealParticipation(userID, date, mt, "NO", teamID); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// GetDayStatusForDate returns the administrative status for a given date.
+// Returns Type="NORMAL" when no status has been set.
+func GetDayStatusForDate(date string) (*DayStatusResponse, error) {
+	ds, err := repository.GetDayStatus(date)
+	if err != nil {
+		return nil, err
+	}
+	if ds == nil {
+		return &DayStatusResponse{Date: date, Type: "NORMAL"}, nil
+	}
+	return &DayStatusResponse{
+		Date:  date,
+		Type:  ds.Type,
+		Note:  ds.Note,
+		SetBy: ds.SetBy,
+	}, nil
 }
