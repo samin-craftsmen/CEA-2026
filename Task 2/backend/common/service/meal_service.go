@@ -46,6 +46,18 @@ type ValidationError struct {
 
 func (e *ValidationError) Error() string { return e.Message }
 
+// validateAdminAccess checks if the given user has admin role.
+func validateAdminAccess(adminID string) error {
+	role, _, err := repository.GetUserRole(adminID)
+	if err != nil {
+		return err
+	}
+	if role != "ADMIN" {
+		return &ValidationError{"access denied: only admins can perform this action"}
+	}
+	return nil
+}
+
 // SetMealStatus updates a user's participation for a specific meal type on a given date.
 // It enforces employee-only access and a 9pm cutoff for the following day's meals.
 func SetMealStatus(discordID, date, mealType, status string) error {
@@ -180,12 +192,8 @@ type AdminMealViewResponse struct {
 // AdminGetMealView returns meal participation for a specific employee on a given date.
 // Only admins can use this. Missing records default to YES (opted-in by default).
 func AdminGetMealView(adminID, targetUserID, date string) (*AdminMealViewResponse, error) {
-	role, _, err := repository.GetUserRole(adminID)
-	if err != nil {
+	if err := validateAdminAccess(adminID); err != nil {
 		return nil, err
-	}
-	if role != "ADMIN" {
-		return nil, &ValidationError{"access denied: only admins can perform this action"}
 	}
 
 	meals, err := repository.GetUserMeals(targetUserID, date)
@@ -211,12 +219,8 @@ func AdminGetMealView(adminID, targetUserID, date string) (*AdminMealViewRespons
 // AdminSetMealStatus updates any employee's meal participation on behalf of an admin.
 // It enforces admin-only access and a 9pm cutoff for the following day's meals.
 func AdminSetMealStatus(adminID, targetUserID, date, mealType, status string) error {
-	role, _, err := repository.GetUserRole(adminID)
-	if err != nil {
+	if err := validateAdminAccess(adminID); err != nil {
 		return err
-	}
-	if role != "ADMIN" {
-		return &ValidationError{"access denied: only admins can perform this action"}
 	}
 
 	mealType = strings.ToLower(mealType)
