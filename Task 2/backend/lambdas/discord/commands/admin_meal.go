@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -10,6 +11,31 @@ import (
 
 func init() {
 	Register("admin-meal", HandleAdminMeal)
+}
+
+// extractAPIErrorMessage parses API error responses to get the actual error message.
+// API errors come in format: "API /path returned status 400: {"error": "actual message"}"
+func extractAPIErrorMessage(err error) string {
+	errStr := err.Error()
+	
+	// Find the JSON part after the colon
+	colonIndex := strings.LastIndex(errStr, ": ")
+	if colonIndex == -1 {
+		return errStr
+	}
+	
+	jsonStr := errStr[colonIndex+2:]
+	
+	// Try to parse as JSON
+	var errorResp struct {
+		Error string `json:"error"`
+	}
+	if json.Unmarshal([]byte(jsonStr), &errorResp) == nil && errorResp.Error != "" {
+		return errorResp.Error
+	}
+	
+	// Fallback to original error if parsing fails
+	return errStr
 }
 
 // HandleAdminMeal routes /admin-meal subcommands.
@@ -81,7 +107,7 @@ func handleAdminMealView(adminID, targetUserID, date string) *types.InteractionR
 		Date:            date,
 	}, &result)
 	if err != nil {
-		return types.ErrorResponse("Failed to fetch meal participation: " + err.Error())
+		return types.ErrorResponse("Failed to fetch meal participation: " + extractAPIErrorMessage(err))
 	}
 
 	fields := make([]types.EmbedField, 0, len(result.Meals))
@@ -126,7 +152,7 @@ func handleAdminMealSet(adminID, targetUserID, date, mealType, status string) *t
 		Status:          status,
 	}, nil)
 	if err != nil {
-		return types.ErrorResponse("Failed to update meal status: " + err.Error())
+		return types.ErrorResponse("Failed to update meal status: " + extractAPIErrorMessage(err))
 	}
 
 	emoji := "✅"
