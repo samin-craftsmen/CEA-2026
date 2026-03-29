@@ -46,6 +46,18 @@ type ValidationError struct {
 
 func (e *ValidationError) Error() string { return e.Message }
 
+// validateAdminAccess checks if the given user has admin role.
+func validateAdminAccess(adminID string) error {
+	role, _, err := repository.GetUserRole(adminID)
+	if err != nil {
+		return err
+	}
+	if role != "ADMIN" {
+		return &ValidationError{"access denied: only admins can perform this action"}
+	}
+	return nil
+}
+
 // SetMealStatus updates a user's participation for a specific meal type on a given date.
 // It enforces employee-only access and a 9pm cutoff for the following day's meals.
 func SetMealStatus(discordID, date, mealType, status string) error {
@@ -169,6 +181,72 @@ func TeamLeadSetMealStatus(teamLeadID, targetUserID, date, mealType, status stri
 	}
 
 	return repository.SetMealParticipation(targetUserID, date, mealType, status, teamID)
+}
+
+type AdminMealViewResponse struct {
+	Date   string            `json:"date"`
+	UserID string            `json:"user_id"`
+	Meals  map[string]string `json:"meals"`
+}
+
+// AdminGetMealView returns meal participation for a specific employee on a given date.
+// Only admins can use this. Missing records default to YES (opted-in by default).
+func AdminGetMealView(adminID, targetUserID, date string) (*AdminMealViewResponse, error) {
+	if err := validateAdminAccess(adminID); err != nil {
+		return nil, err
+	}
+
+	meals, err := repository.GetUserMeals(targetUserID, date)
+	if err != nil {
+		return nil, err
+	}
+
+	result := map[string]string{}
+	for _, mt := range mealTypes {
+		result[mt] = "YES"
+	}
+	for mealType, participation := range meals {
+		result[mealType] = participation
+	}
+
+	return &AdminMealViewResponse{
+		Date:   date,
+		UserID: targetUserID,
+		Meals:  result,
+	}, nil
+}
+
+// AdminSetMealStatus updates any employee's meal participation on behalf of an admin.
+// It enforces admin-only access and a 9pm cutoff for the following day's meals.
+func AdminSetMealStatus(adminID, targetUserID, date, mealType, status string) error {
+	if err := validateAdminAccess(adminID); err != nil {
+		return err
+	}
+
+	mealType = strings.ToLower(mealType)
+	if mealType != "lunch" && mealType != "snacks" {
+		return &ValidationError{fmt.Sprintf("invalid meal type '%s': must be 'lunch' or 'snacks'", mealType)}
+	}
+
+	status = strings.ToUpper(status)
+	if status != "YES" && status != "NO" {
+		return &ValidationError{fmt.Sprintf("invalid status '%s': must be 'YES' or 'NO'", status)}
+	}
+
+	locked, err := isPastCutoff(date)
+	if err != nil {
+		return &ValidationError{err.Error()}
+	}
+	if locked {
+		return &ValidationError{"the cutoff time (9pm) has passed — meal status can no longer be updated for this date"}
+	}
+
+	_, targetTeamID, err := repository.GetUserRole(targetUserID)
+	if err != nil {
+		return err
+	}
+
+	return repository.SetMealParticipation(targetUserID, date, mealType, status, targetTeamID)
 }
 
 // isPastCutoff reports whether the cutoff for updating the given date has passed.
