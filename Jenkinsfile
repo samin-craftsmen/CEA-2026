@@ -9,12 +9,6 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
-            steps {
-                git 'https://github.com/samin-craftsmen/CEA-2026.git'
-            }
-        }
-
         stage('Build All Lambdas') {
             steps {
                 bat '''
