@@ -12,30 +12,29 @@ func init() {
 	Register("day-status", HandleDayStatus)
 }
 
-// HandleDayStatus handles:
-//
-//	day-status set <date> <GOVERNMENT_HOLIDAY|OFFICE_CLOSED|SPECIAL_EVENT> [note]
-//	day-status view <date>
 func HandleDayStatus(args string, userID string) *types.Response {
 	parts := strings.Fields(args)
 	if len(parts) == 0 {
-		return types.TextResponse("Usage:\n`/day-status set <date> <type> [note]`\n`/day-status view <date>`")
+		return types.TextResponse("Usage:\nday-status set <date> <GOVERNMENT_HOLIDAY|OFFICE_CLOSED|SPECIAL_EVENT> [note]\nday-status view <date>")
 	}
 
 	switch parts[0] {
 	case "set":
 		if len(parts) < 3 {
-			return types.ErrorResponse("Usage: `/day-status set <date> <GOVERNMENT_HOLIDAY|OFFICE_CLOSED|SPECIAL_EVENT> [note]`")
+			return types.ErrorResponse("usage: day-status set <date> <type> [note]")
 		}
-		note := strings.Join(parts[3:], " ")
+		note := ""
+		if len(parts) > 3 {
+			note = strings.Join(parts[3:], " ")
+		}
 		return handleDayStatusSet(userID, parts[1], parts[2], note)
 	case "view":
 		if len(parts) < 2 {
-			return types.ErrorResponse("provide a date. Usage: `/day-status view YYYY-MM-DD`")
+			return types.ErrorResponse("usage: day-status view YYYY-MM-DD")
 		}
 		return handleDayStatusView(parts[1])
 	default:
-		return types.ErrorResponse(fmt.Sprintf("unknown subcommand `%s`", parts[0]))
+		return types.ErrorResponse(fmt.Sprintf("unknown subcommand %q", parts[0]))
 	}
 }
 
@@ -48,20 +47,23 @@ type dayStatusSetRequest struct {
 
 func handleDayStatusSet(adminID, date, statusType, note string) *types.Response {
 	if err := client.Post("/day/status/set", dayStatusSetRequest{
-		AdminDiscordID: adminID, Date: date, StatusType: statusType, Note: note,
+		AdminDiscordID: adminID,
+		Date:           date,
+		StatusType:     statusType,
+		Note:           note,
 	}, nil); err != nil {
 		return types.ErrorResponse("failed to set day status: " + err.Error())
 	}
 
-	emoji, label := dayStatusLabel(statusType)
-	msg := fmt.Sprintf("%s *%s* has been marked as *%s*.", emoji, date, label)
+	label := dayStatusLabel(statusType)
+	message := fmt.Sprintf("%s has been marked as %s.", date, label)
 	if statusType == "OFFICE_CLOSED" {
-		msg += "\nAll meals for this day have been automatically opted out."
+		message += " All meals for this day have been automatically opted out."
 	}
 	if note != "" {
-		msg += "\n📝 Note: " + note
+		message += " Note: " + note
 	}
-	return types.TextResponse(msg)
+	return types.TextResponse(message)
 }
 
 type dayStatusViewRequest struct {
@@ -81,28 +83,25 @@ func handleDayStatusView(date string) *types.Response {
 		return types.ErrorResponse("failed to fetch day status: " + err.Error())
 	}
 
-	emoji, label := dayStatusLabel(result.Type)
-	widgets := []types.Widget{
-		types.KV("Status", emoji+" "+label),
-	}
+	lines := []string{"Day Status - " + result.Date, "Status: " + dayStatusLabel(result.Type)}
 	if result.Note != "" {
-		widgets = append(widgets, types.KV("Note", result.Note))
+		lines = append(lines, "Note: "+result.Note)
 	}
 	if result.SetBy != "" {
-		widgets = append(widgets, types.KV("Set by", result.SetBy))
+		lines = append(lines, "Set by: "+result.SetBy)
 	}
-	return types.CardResponse("Day Status — "+result.Date, "", widgets)
+	return types.TextResponse(strings.Join(lines, "\n"))
 }
 
-func dayStatusLabel(statusType string) (emoji, label string) {
+func dayStatusLabel(statusType string) string {
 	switch statusType {
 	case "GOVERNMENT_HOLIDAY":
-		return "🏛️", "Government Holiday"
+		return "Government Holiday"
 	case "OFFICE_CLOSED":
-		return "🔒", "Office Closed"
+		return "Office Closed"
 	case "SPECIAL_EVENT":
-		return "🎉", "Special Event"
+		return "Special Event"
 	default:
-		return "✅", "Normal Working Day"
+		return "Normal Working Day"
 	}
 }

@@ -2,59 +2,88 @@ package main
 
 import (
 	"encoding/json"
-	"net/http"
-	"os"
-	"strings"
+	"log"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/samin-craftsmen/meal-headcount-planner-backend/lambdas/google-chat/client"
-	"github.com/samin-craftsmen/meal-headcount-planner-backend/lambdas/google-chat/handler"
+	ghandler "github.com/samin-craftsmen/meal-headcount-planner-backend/lambdas/google-chat/handler"
 	"github.com/samin-craftsmen/meal-headcount-planner-backend/lambdas/google-chat/types"
 
-	// Blank imports to trigger init() command registration.
 	_ "github.com/samin-craftsmen/meal-headcount-planner-backend/lambdas/google-chat/commands"
 )
 
-var bearerToken string
-
-// HandleInteraction is the Lambda entry point for Google Chat interactions.
-func HandleInteraction(request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
-	// Verify the Bearer token sent by Google Chat.
-	auth := request.Headers["authorization"]
-	if !strings.EqualFold(strings.TrimSpace(strings.TrimPrefix(auth, "Bearer ")), bearerToken) {
-		return jsonResponse(http.StatusUnauthorized, types.TextResponse("unauthorized")), nil
-	}
+func handler(req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+	log.Println("Handler triggered")
+	log.Printf("request: method=%s path=%s content-type=%q user-agent=%q auth-present=%t", req.RequestContext.HTTP.Method, req.RawPath, req.Headers["content-type"], req.Headers["user-agent"], req.Headers["authorization"] != "")
+	log.Printf("raw body: %s", req.Body)
 
 	var event types.Event
-	if err := json.Unmarshal([]byte(request.Body), &event); err != nil {
-		return jsonResponse(http.StatusBadRequest, types.ErrorResponse("invalid request body")), nil
+	if err := json.Unmarshal([]byte(req.Body), &event); err != nil {
+		log.Println("parse error:", err)
 	}
 
-	resp := handler.RouteEvent(&event)
-	if resp == nil {
-		// Acknowledge silently (e.g. non-command messages).
-		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusNoContent}, nil
-	}
-	return jsonResponse(http.StatusOK, resp), nil
-}
+	log.Printf("eventType=%q message=%q user=%q hostChat=%t", event.InteractionType(), event.MessageText(), event.GetUserID(), event.HostAppIsChat())
 
-func jsonResponse(statusCode int, body any) events.APIGatewayV2HTTPResponse {
-	b, _ := json.Marshal(body)
+	response := ghandler.RouteEvent(&event)
+	respBody := buildResponseBody(&event, response)
+	log.Println("Returning:", respBody)
+
 	return events.APIGatewayV2HTTPResponse{
-		StatusCode: statusCode,
+		StatusCode: 200,
 		Headers:    map[string]string{"Content-Type": "application/json"},
-		Body:       string(b),
-	}
+		Body:       respBody,
+	}, nil
 }
 
 func main() {
 	client.Init()
+	lambda.Start(handler)
+}
 
-	bearerToken = os.Getenv("GOOGLE_CHAT_BEARER_TOKEN")
-	if bearerToken == "" {
-		panic("GOOGLE_CHAT_BEARER_TOKEN environment variable is required")
+func buildResponseBody(event *types.Event, response *types.Response) string {
+	type chatMessage struct {
+		Text string `json:"text"`
 	}
 
-	lambda.Start(HandleInteraction)
+	type createMessageAction struct {
+		Message chatMessage `json:"message"`
+	}
+
+	type chatDataAction struct {
+		CreateMessageAction createMessageAction `json:"createMessageAction"`
+	}
+
+	type hostAppDataAction struct {
+		ChatDataAction chatDataAction `json:"chatDataAction"`
+	}
+
+	type dataActionsResponse struct {
+		HostAppDataAction hostAppDataAction `json:"hostAppDataAction"`
+	}
+
+	responseText := ""
+	if response != nil {
+		responseText = response.Text
+	}
+
+	var payload any = chatMessage{Text: responseText}
+	if event != nil && event.HostAppIsChat() {
+		payload = dataActionsResponse{
+			HostAppDataAction: hostAppDataAction{
+				ChatDataAction: chatDataAction{
+					CreateMessageAction: createMessageAction{
+						Message: chatMessage{Text: responseText},
+					},
+				},
+			},
+		}
+	}
+
+	resp, err := json.Marshal(payload)
+	if err != nil {
+		log.Println("response marshal error:", err)
+		return `{"text":""}`
+	}
+	return string(resp)
 }

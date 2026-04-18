@@ -48,5 +48,6 @@ func Post(path string, requestBody any, target any) error {
 			return fmt.Errorf("failed to parse response: %w", err)
 		}
 	}
+
 	return nil
 }

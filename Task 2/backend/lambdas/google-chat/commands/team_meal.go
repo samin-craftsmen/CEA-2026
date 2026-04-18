@@ -13,26 +13,25 @@ func init() {
 	Register("team-meal", HandleTeamMeal)
 }
 
-// HandleTeamMeal handles: team-meal view <date> | team-meal set <target_user_id> <date> <meal_type> <YES|NO>
 func HandleTeamMeal(args string, userID string) *types.Response {
 	parts := strings.Fields(args)
 	if len(parts) == 0 {
-		return types.TextResponse("Usage:\n`/team-meal view <date>`\n`/team-meal set <user_id> <date> <meal_type> <YES|NO>`")
+		return types.TextResponse("Usage:\nteam-meal view <date>\nteam-meal set <user_id> <date> <meal_type> <YES|NO>")
 	}
 
 	switch parts[0] {
 	case "view":
 		if len(parts) < 2 {
-			return types.ErrorResponse("provide a date. Usage: `/team-meal view YYYY-MM-DD`")
+			return types.ErrorResponse("usage: team-meal view YYYY-MM-DD")
 		}
 		return handleTeamMealView(userID, parts[1])
 	case "set":
 		if len(parts) < 5 {
-			return types.ErrorResponse("Usage: `/team-meal set <user_id> <date> <meal_type> <YES|NO>`")
+			return types.ErrorResponse("usage: team-meal set <user_id> <date> <meal_type> <YES|NO>")
 		}
-		return handleTeamMealSet(userID, parts[1], parts[2], parts[3], parts[4])
+		return handleTeamMealSet(userID, normalizeUserRef(parts[1]), parts[2], parts[3], parts[4])
 	default:
-		return types.ErrorResponse(fmt.Sprintf("unknown subcommand `%s`", parts[0]))
+		return types.ErrorResponse(fmt.Sprintf("unknown subcommand %q", parts[0]))
 	}
 }
 
@@ -58,32 +57,31 @@ func handleTeamMealView(teamLeadID, date string) *types.Response {
 	}
 
 	memberIDs := make([]string, 0, len(result.Members))
-	for id := range result.Members {
-		memberIDs = append(memberIDs, id)
+	for memberID := range result.Members {
+		memberIDs = append(memberIDs, memberID)
 	}
 	sort.Strings(memberIDs)
 
-	widgets := make([]types.Widget, 0, len(result.Members))
+	lines := []string{"Team Meal Status - " + date}
+	if result.TeamID != "" {
+		lines = append(lines, "Team: "+result.TeamID)
+	}
 	for _, memberID := range memberIDs {
-		meals := result.Members[memberID]
-		mealKeys := make([]string, 0, len(meals))
-		for mt := range meals {
-			mealKeys = append(mealKeys, mt)
+		mealStates := result.Members[memberID]
+		mealKeys := make([]string, 0, len(mealStates))
+		for mealType := range mealStates {
+			mealKeys = append(mealKeys, mealType)
 		}
 		sort.Strings(mealKeys)
 
-		parts := make([]string, 0, len(meals))
-		for _, mt := range mealKeys {
-			emoji := "✅"
-			if strings.EqualFold(meals[mt], "NO") {
-				emoji = "❌"
-			}
-			parts = append(parts, fmt.Sprintf("%s %s: %s", emoji, capitalize(mt), meals[mt]))
+		parts := make([]string, 0, len(mealKeys))
+		for _, mealType := range mealKeys {
+			parts = append(parts, fmt.Sprintf("%s: %s", capitalize(mealType), mealStates[mealType]))
 		}
-		widgets = append(widgets, types.KV("User "+memberID, strings.Join(parts, "  |  ")))
+		lines = append(lines, fmt.Sprintf("%s -> %s", memberID, strings.Join(parts, " | ")))
 	}
 
-	return types.CardResponse("Team Meal Status — "+date, result.TeamID, widgets)
+	return types.TextResponse(strings.Join(lines, "\n"))
 }
 
 type teamMealSetRequest struct {
@@ -96,15 +94,18 @@ type teamMealSetRequest struct {
 
 func handleTeamMealSet(teamLeadID, targetUserID, date, mealType, status string) *types.Response {
 	if err := client.Post("/meal/team/set", teamMealSetRequest{
-		TeamLeadDiscordID: teamLeadID, TargetDiscordID: targetUserID,
-		Date: date, MealType: mealType, Status: status,
+		TeamLeadDiscordID: teamLeadID,
+		TargetDiscordID:   targetUserID,
+		Date:              date,
+		MealType:          mealType,
+		Status:            strings.ToUpper(status),
 	}, nil); err != nil {
 		return types.ErrorResponse("failed to update meal status: " + err.Error())
 	}
 
-	emoji, optText := "✅", "opted *in* to"
+	verb := "opted in to"
 	if strings.EqualFold(status, "NO") {
-		emoji, optText = "❌", "opted *out* of"
+		verb = "opted out of"
 	}
-	return types.TextResponse(fmt.Sprintf("%s User %s has been %s *%s* on %s.", emoji, targetUserID, optText, capitalize(mealType), date))
+	return types.TextResponse(fmt.Sprintf("User %s has been %s %s on %s.", targetUserID, verb, capitalize(strings.ToLower(mealType)), date))
 }

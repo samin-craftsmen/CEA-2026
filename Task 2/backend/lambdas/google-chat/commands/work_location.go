@@ -12,26 +12,25 @@ func init() {
 	Register("work-location", HandleWorkLocation)
 }
 
-// HandleWorkLocation handles: work-location view <date> | work-location set <date> <OFFICE|WFH>
 func HandleWorkLocation(args string, userID string) *types.Response {
 	parts := strings.Fields(args)
 	if len(parts) == 0 {
-		return types.TextResponse("Usage:\n`/work-location view <date>`\n`/work-location set <date> <OFFICE|WFH>`")
+		return types.TextResponse("Usage:\nwork-location view <date>\nwork-location set <date> <OFFICE|WFH>")
 	}
 
 	switch parts[0] {
 	case "view":
 		if len(parts) < 2 {
-			return types.ErrorResponse("provide a date. Usage: `/work-location view YYYY-MM-DD`")
+			return types.ErrorResponse("usage: work-location view YYYY-MM-DD")
 		}
 		return handleWorkLocationView(userID, parts[1])
 	case "set":
 		if len(parts) < 3 {
-			return types.ErrorResponse("Usage: `/work-location set <date> <OFFICE|WFH>`")
+			return types.ErrorResponse("usage: work-location set <date> <OFFICE|WFH>")
 		}
 		return handleWorkLocationSet(userID, parts[1], parts[2])
 	default:
-		return types.ErrorResponse(fmt.Sprintf("unknown subcommand `%s`", parts[0]))
+		return types.ErrorResponse(fmt.Sprintf("unknown subcommand %q", parts[0]))
 	}
 }
 
@@ -52,13 +51,11 @@ func handleWorkLocationView(userID, date string) *types.Response {
 		return types.ErrorResponse("failed to fetch work location: " + err.Error())
 	}
 
-	emoji, label := "🏢", "Office"
-	if result.Location == "WFH" {
-		emoji, label = "🏠", "Work from Home"
+	label := "Office"
+	if strings.EqualFold(result.Location, "WFH") {
+		label = "Work from Home"
 	}
-	return types.CardResponse("Work Location — "+result.Date, "", []types.Widget{
-		types.KV("Location", emoji+" "+label),
-	})
+	return types.TextResponse(fmt.Sprintf("Work Location - %s\nLocation: %s", result.Date, label))
 }
 
 type workLocationSetRequest struct {
@@ -68,15 +65,15 @@ type workLocationSetRequest struct {
 }
 
 func handleWorkLocationSet(userID, date, location string) *types.Response {
-	if err := client.Post("/work-location/set", workLocationSetRequest{
-		DiscordID: userID, Date: date, Location: location,
-	}, nil); err != nil {
+	if err := client.Post("/work-location/set", workLocationSetRequest{DiscordID: userID, Date: date, Location: strings.ToUpper(location)}, nil); err != nil {
 		return types.ErrorResponse("failed to update work location: " + err.Error())
 	}
 
-	emoji, label, mealNote := "🏢", "Office", "Your meals have been opted *in*."
+	label := "Office"
+	mealNote := "Your meals have been opted in."
 	if strings.EqualFold(location, "WFH") {
-		emoji, label, mealNote = "🏠", "Work from Home", "Your meals have been opted *out* for this date."
+		label = "Work from Home"
+		mealNote = "Your meals have been opted out for this date."
 	}
-	return types.TextResponse(fmt.Sprintf("%s Your work location on *%s* has been set to *%s*.\n%s", emoji, date, label, mealNote))
+	return types.TextResponse(fmt.Sprintf("Your work location on %s has been set to %s. %s", date, label, mealNote))
 }

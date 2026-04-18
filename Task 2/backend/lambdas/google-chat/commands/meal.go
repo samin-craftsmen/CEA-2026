@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/samin-craftsmen/meal-headcount-planner-backend/lambdas/google-chat/client"
@@ -13,26 +12,25 @@ func init() {
 	Register("meal", HandleMeal)
 }
 
-// HandleMeal handles: meal view <date> | meal set <date> <meal_type> <YES|NO>
 func HandleMeal(args string, userID string) *types.Response {
 	parts := strings.Fields(args)
 	if len(parts) == 0 {
-		return types.TextResponse("Usage:\n`/meal view <date>`\n`/meal set <date> <meal_type> <YES|NO>`")
+		return types.TextResponse("Usage:\nmeal view <date>\nmeal set <date> <meal_type> <YES|NO>")
 	}
 
 	switch parts[0] {
 	case "view":
 		if len(parts) < 2 {
-			return types.ErrorResponse("provide a date. Usage: `/meal view YYYY-MM-DD`")
+			return types.ErrorResponse("usage: meal view YYYY-MM-DD")
 		}
 		return handleMealView(userID, parts[1])
 	case "set":
 		if len(parts) < 4 {
-			return types.ErrorResponse("Usage: `/meal set <date> <meal_type> <YES|NO>`")
+			return types.ErrorResponse("usage: meal set <date> <meal_type> <YES|NO>")
 		}
 		return handleMealSet(userID, parts[1], parts[2], parts[3])
 	default:
-		return types.ErrorResponse(fmt.Sprintf("unknown subcommand `%s`", parts[0]))
+		return types.ErrorResponse(fmt.Sprintf("unknown subcommand %q", parts[0]))
 	}
 }
 
@@ -53,18 +51,12 @@ func handleMealView(userID, date string) *types.Response {
 		return types.ErrorResponse("failed to fetch meal participation: " + err.Error())
 	}
 
-	mealKeys := sortedKeys(result.Meals)
-	widgets := make([]types.Widget, 0, len(result.Meals))
-	for _, mt := range mealKeys {
-		status := result.Meals[mt]
-		emoji := "✅"
-		if strings.EqualFold(status, "NO") {
-			emoji = "❌"
-		}
-		widgets = append(widgets, types.KV(capitalize(mt), emoji+" "+status))
+	lines := []string{"Meal Participation - " + result.Date}
+	for _, mealType := range sortedKeys(result.Meals) {
+		lines = append(lines, fmt.Sprintf("%s: %s", capitalize(mealType), result.Meals[mealType]))
 	}
-
-	return types.CardResponse("Meal Participation — "+result.Date, "User: "+result.UserID, widgets)
+	lines = append(lines, "User: "+result.UserID)
+	return types.TextResponse(strings.Join(lines, "\n"))
 }
 
 type mealSetRequest struct {
@@ -76,30 +68,17 @@ type mealSetRequest struct {
 
 func handleMealSet(userID, date, mealType, status string) *types.Response {
 	if err := client.Post("/meal/participation/set", mealSetRequest{
-		DiscordID: userID, Date: date, MealType: mealType, Status: status,
+		DiscordID: userID,
+		Date:      date,
+		MealType:  mealType,
+		Status:    strings.ToUpper(status),
 	}, nil); err != nil {
 		return types.ErrorResponse("failed to update meal status: " + err.Error())
 	}
 
-	emoji, optText := "✅", "opted *in* to"
+	verb := "opted in to"
 	if strings.EqualFold(status, "NO") {
-		emoji, optText = "❌", "opted *out* of"
+		verb = "opted out of"
 	}
-	return types.TextResponse(fmt.Sprintf("%s You have %s *%s* on %s.", emoji, optText, capitalize(mealType), date))
-}
-
-func sortedKeys(m map[string]string) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
-func capitalize(s string) string {
-	if s == "" {
-		return s
-	}
-	return strings.ToUpper(s[:1]) + s[1:]
+	return types.TextResponse(fmt.Sprintf("You have %s %s on %s.", verb, capitalize(strings.ToLower(mealType)), date))
 }

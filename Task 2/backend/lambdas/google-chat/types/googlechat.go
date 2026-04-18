@@ -1,133 +1,167 @@
 package types
 
-// Interaction types from Google Chat.
+import "strings"
+
 const (
 	InteractionTypeMessage      = "MESSAGE"
-	InteractionTypeCardClicked  = "CARD_CLICKED"
 	InteractionTypeAddedToSpace = "ADDED_TO_SPACE"
+	InteractionTypeAppCommand   = "APP_COMMAND"
 )
 
-// Event is the Google Chat event payload sent to the bot.
 type Event struct {
-	Type   string  `json:"type"`
-	User   User    `json:"user"`
-	Space  Space   `json:"space"`
-	Action *Action `json:"action,omitempty"`
-	// For slash commands the message contains the command text.
+	Type              string             `json:"type,omitempty"`
+	CommonEventObject *CommonEventObject `json:"commonEventObject,omitempty"`
+	Chat              *ChatEvent         `json:"chat,omitempty"`
+	Message           *Message           `json:"message,omitempty"`
+	User              *User              `json:"user,omitempty"`
+	Space             *Space             `json:"space,omitempty"`
+	Token             string             `json:"token,omitempty"`
+}
+
+type CommonEventObject struct {
+	HostApp  string `json:"hostApp,omitempty"`
+	Platform string `json:"platform,omitempty"`
+}
+
+type ChatEvent struct {
+	User                *User                `json:"user,omitempty"`
+	EventTime           string               `json:"eventTime,omitempty"`
+	MessagePayload      *MessagePayload      `json:"messagePayload,omitempty"`
+	AddedToSpacePayload *AddedToSpacePayload `json:"addedToSpacePayload,omitempty"`
+	AppCommandPayload   *AppCommandPayload   `json:"appCommandPayload,omitempty"`
+}
+
+type MessagePayload struct {
+	Space   *Space   `json:"space,omitempty"`
 	Message *Message `json:"message,omitempty"`
 }
 
-type User struct {
-	Name        string `json:"name"`        // "users/12345"
-	DisplayName string `json:"displayName"`
+type AddedToSpacePayload struct {
+	Space *Space `json:"space,omitempty"`
+}
+
+type AppCommandPayload struct {
+	AppCommandMetadata *AppCommandMetadata `json:"appCommandMetadata,omitempty"`
+	Space              *Space              `json:"space,omitempty"`
+	Message            *Message            `json:"message,omitempty"`
+}
+
+type AppCommandMetadata struct {
+	AppCommandID int64 `json:"appCommandId,omitempty"`
 }
 
 type Space struct {
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
+	Type string `json:"type,omitempty"`
 }
 
 type Message struct {
-	Text          string         `json:"text"`
-	SlashCommand  *SlashCommand  `json:"slashCommand,omitempty"`
-	ArgumentText  string         `json:"argumentText,omitempty"`
+	Text          string `json:"text,omitempty"`
+	ArgumentText  string `json:"argumentText,omitempty"`
+	FormattedText string `json:"formattedText,omitempty"`
 }
 
-type SlashCommand struct {
-	CommandID int64 `json:"commandId"`
+type User struct {
+	Name        string `json:"name,omitempty"`
+	DisplayName string `json:"displayName,omitempty"`
 }
 
-// Action is sent when a user clicks a button on a card.
-type Action struct {
-	ActionMethodName string       `json:"actionMethodName"`
-	Parameters       []ActionParam `json:"parameters,omitempty"`
-}
-
-type ActionParam struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
-// Response is the JSON response sent back to Google Chat.
 type Response struct {
-	Text  string `json:"text,omitempty"`
-	Cards []Card `json:"cards,omitempty"`
+	Text string `json:"text,omitempty"`
 }
 
-type Card struct {
-	Header   *CardHeader   `json:"header,omitempty"`
-	Sections []CardSection `json:"sections,omitempty"`
-}
-
-type CardHeader struct {
-	Title    string `json:"title"`
-	Subtitle string `json:"subtitle,omitempty"`
-}
-
-type CardSection struct {
-	Widgets []Widget `json:"widgets"`
-}
-
-type Widget struct {
-	TextParagraph *TextParagraph `json:"textParagraph,omitempty"`
-	KeyValue      *KeyValue      `json:"keyValue,omitempty"`
-}
-
-type TextParagraph struct {
-	Text string `json:"text"`
-}
-
-type KeyValue struct {
-	TopLabel    string `json:"topLabel,omitempty"`
-	Content     string `json:"content"`
-	BottomLabel string `json:"bottomLabel,omitempty"`
-}
-
-// GetUserID extracts the bare user ID from the "users/12345" name.
-func (e *Event) GetUserID() string {
-	name := e.User.Name
-	const prefix = "users/"
-	if len(name) > len(prefix) {
-		return name[len(prefix):]
+func (e *Event) InteractionType() string {
+	if strings.TrimSpace(e.Type) != "" {
+		return e.Type
 	}
-	return name
-}
-
-// GetParam returns the value of a named action parameter.
-func (e *Event) GetParam(key string) string {
-	if e.Action == nil {
+	if e.Chat == nil {
 		return ""
 	}
-	for _, p := range e.Action.Parameters {
-		if p.Key == key {
-			return p.Value
+	switch {
+	case e.Chat.MessagePayload != nil:
+		return InteractionTypeMessage
+	case e.Chat.AddedToSpacePayload != nil:
+		return InteractionTypeAddedToSpace
+	case e.Chat.AppCommandPayload != nil:
+		return InteractionTypeAppCommand
+	default:
+		return ""
+	}
+}
+
+func (e *Event) MessageText() string {
+	if e.Message != nil {
+		if text := firstNonEmpty(e.Message.ArgumentText, e.Message.Text, e.Message.FormattedText); text != "" {
+			return text
+		}
+	}
+	if e.Chat == nil {
+		return ""
+	}
+	if e.Chat.MessagePayload != nil && e.Chat.MessagePayload.Message != nil {
+		return firstNonEmpty(
+			e.Chat.MessagePayload.Message.ArgumentText,
+			e.Chat.MessagePayload.Message.Text,
+			e.Chat.MessagePayload.Message.FormattedText,
+		)
+	}
+	if e.Chat.AppCommandPayload != nil && e.Chat.AppCommandPayload.Message != nil {
+		return firstNonEmpty(
+			e.Chat.AppCommandPayload.Message.ArgumentText,
+			e.Chat.AppCommandPayload.Message.Text,
+			e.Chat.AppCommandPayload.Message.FormattedText,
+		)
+	}
+	return ""
+}
+
+func (e *Event) GetUserID() string {
+	if e.User != nil {
+		if id := normalizeUserID(e.User.Name); id != "" {
+			return id
+		}
+	}
+	if e.Chat != nil && e.Chat.User != nil {
+		if id := normalizeUserID(e.Chat.User.Name); id != "" {
+			return id
 		}
 	}
 	return ""
 }
 
-// --- Response builders ---
+func (e *Event) HostAppIsChat() bool {
+	return e.CommonEventObject != nil && strings.EqualFold(e.CommonEventObject.HostApp, "CHAT")
+}
+
+func (e *Event) AppCommandID() int64 {
+	if e.Chat == nil || e.Chat.AppCommandPayload == nil || e.Chat.AppCommandPayload.AppCommandMetadata == nil {
+		return 0
+	}
+	return e.Chat.AppCommandPayload.AppCommandMetadata.AppCommandID
+}
 
 func TextResponse(text string) *Response {
 	return &Response{Text: text}
 }
 
-func CardResponse(title, subtitle string, widgets []Widget) *Response {
-	return &Response{
-		Cards: []Card{{
-			Header:   &CardHeader{Title: title, Subtitle: subtitle},
-			Sections: []CardSection{{Widgets: widgets}},
-		}},
+func ErrorResponse(message string) *Response {
+	return TextResponse("Error: " + message)
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed != "" {
+			return trimmed
+		}
 	}
+	return ""
 }
 
-func ErrorResponse(msg string) *Response {
-	return TextResponse("❌ Error: " + msg)
-}
-
-func KV(label, content string) Widget {
-	return Widget{KeyValue: &KeyValue{TopLabel: label, Content: content}}
-}
-
-func Para(text string) Widget {
-	return Widget{TextParagraph: &TextParagraph{Text: text}}
+func normalizeUserID(value string) string {
+	trimmed := strings.TrimSpace(value)
+	trimmed = strings.TrimPrefix(trimmed, "users/")
+	trimmed = strings.TrimPrefix(trimmed, "<users/")
+	trimmed = strings.TrimSuffix(trimmed, ">")
+	return strings.TrimSpace(trimmed)
 }
