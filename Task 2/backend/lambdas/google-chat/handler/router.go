@@ -17,15 +17,25 @@ var (
 )
 
 func RouteEvent(event *types.Event) *types.Response {
+	if event == nil {
+		return types.ErrorResponse("invalid event payload")
+	}
+
 	switch event.InteractionType() {
 	case types.InteractionTypeAddedToSpace:
 		return types.TextResponse(welcomeText())
 	case types.InteractionTypeMessage:
+		if strings.TrimSpace(event.GetUserID()) == "" {
+			return types.ErrorResponse("unable to determine the invoking user")
+		}
 		return handleCommandText(event.MessageText(), event.GetUserID())
 	case types.InteractionTypeAppCommand:
+		if strings.TrimSpace(event.GetUserID()) == "" {
+			return types.ErrorResponse("unable to determine the invoking user")
+		}
 		return handleAppCommand(event)
 	default:
-		return types.TextResponse(welcomeText())
+		return types.ErrorResponse("unsupported Google Chat event type")
 	}
 }
 
@@ -48,6 +58,10 @@ func handleCommandText(text, userID string) *types.Response {
 	}
 	trimmed = strings.TrimPrefix(trimmed, "/")
 	name, args := splitCommand(trimmed)
+	name = strings.ToLower(strings.TrimSpace(name))
+	if name == "" {
+		return types.TextResponse(welcomeText())
+	}
 	handler, ok := commands.Get(name)
 	if !ok {
 		return types.TextResponse(welcomeText())

@@ -47,6 +47,9 @@ func handleAutocomplete(interaction *types.Interaction) *types.InteractionRespon
 
 	choices := make([]types.AutocompleteChoice, len(resp.MealTypes))
 	for i, mt := range resp.MealTypes {
+		if mt == "" {
+			continue
+		}
 		choices[i] = types.AutocompleteChoice{
 			Name:  strings.ToUpper(mt[:1]) + mt[1:],
 			Value: mt,

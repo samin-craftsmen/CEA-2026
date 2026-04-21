@@ -14,6 +14,9 @@ func init() {
 
 // HandleMeal routes /meal subcommands.
 func HandleMeal(data *types.CommandData, userID string) *types.InteractionResponse {
+	if _, errResp := commandUserID(userID); errResp != nil {
+		return errResp
+	}
 	if len(data.Options) == 0 {
 		return types.ErrorResponse("Please provide a subcommand. Usage: `/meal view`")
 	}
@@ -21,15 +24,13 @@ func HandleMeal(data *types.CommandData, userID string) *types.InteractionRespon
 	sub := data.Options[0]
 	switch sub.Name {
 	case "view":
-		// sub.Options[0] is the "date" string option
-		date := ""
-		if len(sub.Options) > 0 {
-			if v, ok := sub.Options[0].Value.(string); ok {
-				date = v
-			}
+		date, err := stringOption(sub.Options, "date")
+		if err != nil {
+			return types.ErrorResponse(err.Error())
 		}
-		if date == "" {
-			return types.ErrorResponse("Please provide a date. Usage: `/meal view YYYY-MM-DD`")
+		date, errResp := validatedDate(date)
+		if errResp != nil {
+			return errResp
 		}
 		return handleMealView(userID, date)
 	case "set":
@@ -46,8 +47,18 @@ func HandleMeal(data *types.CommandData, userID string) *types.InteractionRespon
 				}
 			}
 		}
-		if date == "" || mealType == "" || status == "" {
-			return types.ErrorResponse("Please provide all required options: date, meal_type, and status.")
+		var errResp *types.InteractionResponse
+		date, errResp = validatedDate(date)
+		if errResp != nil {
+			return errResp
+		}
+		mealType, errResp = validatedMealType(mealType)
+		if errResp != nil {
+			return errResp
+		}
+		status, errResp = validatedStatus(status)
+		if errResp != nil {
+			return errResp
 		}
 		return handleMealSet(userID, date, mealType, status)
 	default:

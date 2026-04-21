@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -30,6 +31,10 @@ func HandleInteraction(request events.APIGatewayV2HTTPRequest) (events.APIGatewa
 			StatusCode: http.StatusUnauthorized,
 			Body:       "invalid request signature",
 		}, nil
+	}
+
+	if strings.TrimSpace(request.Body) == "" {
+		return jsonResponse(http.StatusBadRequest, types.ErrorResponse("Request body is required")), nil
 	}
 
 	// Parse the interaction payload
@@ -77,6 +82,9 @@ func main() {
 	key, err := hex.DecodeString(keyHex)
 	if err != nil {
 		panic("invalid DISCORD_PUBLIC_KEY: " + err.Error())
+	}
+	if len(key) != ed25519.PublicKeySize {
+		panic("invalid DISCORD_PUBLIC_KEY: wrong key length")
 	}
 	publicKey = ed25519.PublicKey(key)
 

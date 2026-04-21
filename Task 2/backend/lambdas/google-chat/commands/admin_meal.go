@@ -14,27 +14,59 @@ func init() {
 }
 
 func HandleAdminMeal(args string, userID string) *types.Response {
+	userID, errResp := validatedCommandUserID(userID)
+	if errResp != nil {
+		return errResp
+	}
 	parts := strings.Fields(args)
 	if len(parts) == 0 {
 		return types.TextResponse("Usage:\nadmin-meal view <user_id> <date>\nadmin-meal set <user_id> <date> <meal_type> <YES|NO>\nadmin-meal headcount <date>")
 	}
 
-	switch parts[0] {
+	switch normalizedSubcommand(parts[0]) {
 	case "view":
-		if len(parts) < 3 {
-			return types.ErrorResponse("usage: admin-meal view <user_id> <date>")
+		if resp := requireExactArgs(parts, 3, "admin-meal view <user_id> <date>"); resp != nil {
+			return resp
 		}
-		return handleAdminMealView(userID, normalizeUserRef(parts[1]), parts[2])
+		targetUserID, errResp := validatedChatTargetUserID(parts[1])
+		if errResp != nil {
+			return errResp
+		}
+		date, errResp := validatedChatDate(parts[2])
+		if errResp != nil {
+			return errResp
+		}
+		return handleAdminMealView(userID, targetUserID, date)
 	case "set":
-		if len(parts) < 5 {
-			return types.ErrorResponse("usage: admin-meal set <user_id> <date> <meal_type> <YES|NO>")
+		if resp := requireExactArgs(parts, 5, "admin-meal set <user_id> <date> <meal_type> <YES|NO>"); resp != nil {
+			return resp
 		}
-		return handleAdminMealSet(userID, normalizeUserRef(parts[1]), parts[2], parts[3], parts[4])
+		targetUserID, errResp := validatedChatTargetUserID(parts[1])
+		if errResp != nil {
+			return errResp
+		}
+		date, errResp := validatedChatDate(parts[2])
+		if errResp != nil {
+			return errResp
+		}
+		mealType, errResp := validatedChatMealType(parts[3])
+		if errResp != nil {
+			return errResp
+		}
+		status, errResp := validatedChatStatus(parts[4])
+		if errResp != nil {
+			return errResp
+		}
+		return handleAdminMealSet(userID, targetUserID, date, mealType, status)
 	case "headcount":
-		if len(parts) < 2 {
-			return types.ErrorResponse("usage: admin-meal headcount <date>")
+		if resp := requireExactArgs(parts, 2, "admin-meal headcount <date>"); resp != nil {
+			return resp
 		}
-		return handleAdminHeadcount(userID, parts[1])
+		date, errResp := validatedChatDate(parts[1])
+		if errResp != nil {
+			return errResp
+		}
+		return handleAdminHeadcount(userID, date)
 	default:
 		return types.ErrorResponse(fmt.Sprintf("unknown subcommand %q", parts[0]))
 	}

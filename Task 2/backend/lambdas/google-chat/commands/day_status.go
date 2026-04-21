@@ -13,26 +13,46 @@ func init() {
 }
 
 func HandleDayStatus(args string, userID string) *types.Response {
+	userID, errResp := validatedCommandUserID(userID)
+	if errResp != nil {
+		return errResp
+	}
 	parts := strings.Fields(args)
 	if len(parts) == 0 {
 		return types.TextResponse("Usage:\nday-status set <date> <GOVERNMENT_HOLIDAY|OFFICE_CLOSED|SPECIAL_EVENT> [note]\nday-status view <date>")
 	}
 
-	switch parts[0] {
+	switch normalizedSubcommand(parts[0]) {
 	case "set":
-		if len(parts) < 3 {
-			return types.ErrorResponse("usage: day-status set <date> <type> [note]")
+		if resp := requireMinArgs(parts, 3, "day-status set <date> <type> [note]"); resp != nil {
+			return resp
+		}
+		date, errResp := validatedChatDate(parts[1])
+		if errResp != nil {
+			return errResp
+		}
+		statusType, errResp := validatedChatDayStatus(parts[2])
+		if errResp != nil {
+			return errResp
 		}
 		note := ""
 		if len(parts) > 3 {
 			note = strings.Join(parts[3:], " ")
 		}
-		return handleDayStatusSet(userID, parts[1], parts[2], note)
-	case "view":
-		if len(parts) < 2 {
-			return types.ErrorResponse("usage: day-status view YYYY-MM-DD")
+		note, errResp = validatedChatNote(note, statusType == "SPECIAL_EVENT")
+		if errResp != nil {
+			return errResp
 		}
-		return handleDayStatusView(parts[1])
+		return handleDayStatusSet(userID, date, statusType, note)
+	case "view":
+		if resp := requireExactArgs(parts, 2, "day-status view YYYY-MM-DD"); resp != nil {
+			return resp
+		}
+		date, errResp := validatedChatDate(parts[1])
+		if errResp != nil {
+			return errResp
+		}
+		return handleDayStatusView(date)
 	default:
 		return types.ErrorResponse(fmt.Sprintf("unknown subcommand %q", parts[0]))
 	}

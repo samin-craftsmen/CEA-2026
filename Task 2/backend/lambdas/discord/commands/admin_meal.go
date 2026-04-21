@@ -15,6 +15,9 @@ func init() {
 
 // HandleAdminMeal routes /admin-meal subcommands.
 func HandleAdminMeal(data *types.CommandData, userID string) *types.InteractionResponse {
+	if _, errResp := commandUserID(userID); errResp != nil {
+		return errResp
+	}
 	if len(data.Options) == 0 {
 		return types.ErrorResponse("Please provide a subcommand. Usage: `/admin-meal view`, `/admin-meal set`, or `/admin-meal headcount`")
 	}
@@ -33,8 +36,14 @@ func HandleAdminMeal(data *types.CommandData, userID string) *types.InteractionR
 				}
 			}
 		}
-		if targetUserID == "" || date == "" {
-			return types.ErrorResponse("Please provide all required options: employee and date.")
+		var errResp *types.InteractionResponse
+		targetUserID, errResp = validatedTargetUserID(targetUserID)
+		if errResp != nil {
+			return errResp
+		}
+		date, errResp = validatedDate(date)
+		if errResp != nil {
+			return errResp
 		}
 		return handleAdminMealView(userID, targetUserID, date)
 	case "set":
@@ -53,8 +62,22 @@ func HandleAdminMeal(data *types.CommandData, userID string) *types.InteractionR
 				}
 			}
 		}
-		if targetUserID == "" || date == "" || mealType == "" || status == "" {
-			return types.ErrorResponse("Please provide all required options: employee, date, meal_type, and status.")
+		var errResp *types.InteractionResponse
+		targetUserID, errResp = validatedTargetUserID(targetUserID)
+		if errResp != nil {
+			return errResp
+		}
+		date, errResp = validatedDate(date)
+		if errResp != nil {
+			return errResp
+		}
+		mealType, errResp = validatedMealType(mealType)
+		if errResp != nil {
+			return errResp
+		}
+		status, errResp = validatedStatus(status)
+		if errResp != nil {
+			return errResp
 		}
 		return handleAdminMealSet(userID, targetUserID, date, mealType, status)
 	case "headcount":
@@ -64,8 +87,9 @@ func HandleAdminMeal(data *types.CommandData, userID string) *types.InteractionR
 				date = v
 			}
 		}
-		if date == "" {
-			return types.ErrorResponse("Please provide the required option: date.")
+		date, errResp := validatedDate(date)
+		if errResp != nil {
+			return errResp
 		}
 		return handleAdminHeadcount(userID, date)
 	default:

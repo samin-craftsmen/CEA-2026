@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"net/http"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -18,9 +20,22 @@ func handler(req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPRespons
 	log.Printf("request: method=%s path=%s content-type=%q user-agent=%q auth-present=%t", req.RequestContext.HTTP.Method, req.RawPath, req.Headers["content-type"], req.Headers["user-agent"], req.Headers["authorization"] != "")
 	log.Printf("raw body: %s", req.Body)
 
+	if strings.TrimSpace(req.Body) == "" {
+		return events.APIGatewayV2HTTPResponse{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       `{"text":"Error: request body is required"}`,
+		}, nil
+	}
+
 	var event types.Event
 	if err := json.Unmarshal([]byte(req.Body), &event); err != nil {
 		log.Println("parse error:", err)
+		return events.APIGatewayV2HTTPResponse{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       `{"text":"Error: invalid request body"}`,
+		}, nil
 	}
 
 	log.Printf("eventType=%q message=%q user=%q hostChat=%t", event.InteractionType(), event.MessageText(), event.GetUserID(), event.HostAppIsChat())
@@ -30,7 +45,7 @@ func handler(req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPRespons
 	log.Println("Returning:", respBody)
 
 	return events.APIGatewayV2HTTPResponse{
-		StatusCode: 200,
+		StatusCode: http.StatusOK,
 		Headers:    map[string]string{"Content-Type": "application/json"},
 		Body:       respBody,
 	}, nil

@@ -13,6 +13,9 @@ func init() {
 
 // HandleDayStatus routes /day-status subcommands.
 func HandleDayStatus(data *types.CommandData, userID string) *types.InteractionResponse {
+	if _, errResp := commandUserID(userID); errResp != nil {
+		return errResp
+	}
 	if len(data.Options) == 0 {
 		return types.ErrorResponse("Please provide a subcommand. Usage: `/day-status set` or `/day-status view`")
 	}
@@ -33,8 +36,18 @@ func HandleDayStatus(data *types.CommandData, userID string) *types.InteractionR
 				}
 			}
 		}
-		if date == "" || statusType == "" {
-			return types.ErrorResponse("Please provide all required options: date and type.")
+		var errResp *types.InteractionResponse
+		date, errResp = validatedDate(date)
+		if errResp != nil {
+			return errResp
+		}
+		statusType, errResp = validatedDayStatus(statusType)
+		if errResp != nil {
+			return errResp
+		}
+		note, errResp = validatedNote(note, statusType == "SPECIAL_EVENT")
+		if errResp != nil {
+			return errResp
 		}
 		return handleDayStatusSet(userID, date, statusType, note)
 	case "view":
@@ -44,8 +57,9 @@ func HandleDayStatus(data *types.CommandData, userID string) *types.InteractionR
 				date = v
 			}
 		}
-		if date == "" {
-			return types.ErrorResponse("Please provide the required option: date.")
+		date, errResp := validatedDate(date)
+		if errResp != nil {
+			return errResp
 		}
 		return handleDayStatusView(date)
 	default:

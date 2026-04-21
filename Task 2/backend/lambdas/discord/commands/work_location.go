@@ -13,6 +13,9 @@ func init() {
 
 // HandleWorkLocation routes /work-location subcommands.
 func HandleWorkLocation(data *types.CommandData, userID string) *types.InteractionResponse {
+	if _, errResp := commandUserID(userID); errResp != nil {
+		return errResp
+	}
 	if len(data.Options) == 0 {
 		return types.ErrorResponse("Please provide a subcommand. Usage: `/work-location view` or `/work-location set`")
 	}
@@ -26,8 +29,9 @@ func HandleWorkLocation(data *types.CommandData, userID string) *types.Interacti
 				date = v
 			}
 		}
-		if date == "" {
-			return types.ErrorResponse("Please provide the required option: date.")
+		date, errResp := validatedDate(date)
+		if errResp != nil {
+			return errResp
 		}
 		return handleWorkLocationView(userID, date)
 	case "set":
@@ -42,8 +46,14 @@ func HandleWorkLocation(data *types.CommandData, userID string) *types.Interacti
 				}
 			}
 		}
-		if date == "" || location == "" {
-			return types.ErrorResponse("Please provide all required options: date and location.")
+		var errResp *types.InteractionResponse
+		date, errResp = validatedDate(date)
+		if errResp != nil {
+			return errResp
+		}
+		location, errResp = validatedLocation(location)
+		if errResp != nil {
+			return errResp
 		}
 		return handleWorkLocationSet(userID, date, location)
 	default:

@@ -13,22 +13,38 @@ func init() {
 }
 
 func HandleMealType(args string, userID string) *types.Response {
+	userID, errResp := validatedCommandUserID(userID)
+	if errResp != nil {
+		return errResp
+	}
 	parts := strings.Fields(args)
 	if len(parts) == 0 {
 		return types.TextResponse("Usage:\nmeal-type view <date>\nmeal-type add <date> <meal_type>")
 	}
 
-	switch parts[0] {
+	switch normalizedSubcommand(parts[0]) {
 	case "view":
-		if len(parts) < 2 {
-			return types.ErrorResponse("usage: meal-type view YYYY-MM-DD")
+		if resp := requireExactArgs(parts, 2, "meal-type view YYYY-MM-DD"); resp != nil {
+			return resp
 		}
-		return handleMealTypeView(parts[1])
+		date, errResp := validatedChatDate(parts[1])
+		if errResp != nil {
+			return errResp
+		}
+		return handleMealTypeView(date)
 	case "add":
-		if len(parts) < 3 {
-			return types.ErrorResponse("usage: meal-type add <date> <meal_type>")
+		if resp := requireExactArgs(parts, 3, "meal-type add <date> <meal_type>"); resp != nil {
+			return resp
 		}
-		return handleMealTypeAdd(userID, parts[1], parts[2])
+		date, errResp := validatedChatDate(parts[1])
+		if errResp != nil {
+			return errResp
+		}
+		mealType, errResp := validatedChatMealType(parts[2])
+		if errResp != nil {
+			return errResp
+		}
+		return handleMealTypeAdd(userID, date, mealType)
 	default:
 		return types.ErrorResponse(fmt.Sprintf("unknown subcommand %q", parts[0]))
 	}

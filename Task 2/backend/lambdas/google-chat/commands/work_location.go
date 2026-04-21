@@ -13,22 +13,38 @@ func init() {
 }
 
 func HandleWorkLocation(args string, userID string) *types.Response {
+	userID, errResp := validatedCommandUserID(userID)
+	if errResp != nil {
+		return errResp
+	}
 	parts := strings.Fields(args)
 	if len(parts) == 0 {
 		return types.TextResponse("Usage:\nwork-location view <date>\nwork-location set <date> <OFFICE|WFH>")
 	}
 
-	switch parts[0] {
+	switch normalizedSubcommand(parts[0]) {
 	case "view":
-		if len(parts) < 2 {
-			return types.ErrorResponse("usage: work-location view YYYY-MM-DD")
+		if resp := requireExactArgs(parts, 2, "work-location view YYYY-MM-DD"); resp != nil {
+			return resp
 		}
-		return handleWorkLocationView(userID, parts[1])
+		date, errResp := validatedChatDate(parts[1])
+		if errResp != nil {
+			return errResp
+		}
+		return handleWorkLocationView(userID, date)
 	case "set":
-		if len(parts) < 3 {
-			return types.ErrorResponse("usage: work-location set <date> <OFFICE|WFH>")
+		if resp := requireExactArgs(parts, 3, "work-location set <date> <OFFICE|WFH>"); resp != nil {
+			return resp
 		}
-		return handleWorkLocationSet(userID, parts[1], parts[2])
+		date, errResp := validatedChatDate(parts[1])
+		if errResp != nil {
+			return errResp
+		}
+		location, errResp := validatedChatLocation(parts[2])
+		if errResp != nil {
+			return errResp
+		}
+		return handleWorkLocationSet(userID, date, location)
 	default:
 		return types.ErrorResponse(fmt.Sprintf("unknown subcommand %q", parts[0]))
 	}

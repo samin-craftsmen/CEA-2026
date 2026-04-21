@@ -14,6 +14,9 @@ func init() {
 
 // HandleMealType routes /meal-type subcommands.
 func HandleMealType(data *types.CommandData, userID string) *types.InteractionResponse {
+	if _, errResp := commandUserID(userID); errResp != nil {
+		return errResp
+	}
 	if len(data.Options) == 0 {
 		return types.ErrorResponse("Please provide a subcommand. Usage: `/meal-type view` or `/meal-type add`")
 	}
@@ -27,8 +30,9 @@ func HandleMealType(data *types.CommandData, userID string) *types.InteractionRe
 				date = v
 			}
 		}
-		if date == "" {
-			return types.ErrorResponse("Please provide a date.")
+		date, errResp := validatedDate(date)
+		if errResp != nil {
+			return errResp
 		}
 		return handleMealTypeView(date)
 	case "add":
@@ -43,8 +47,14 @@ func HandleMealType(data *types.CommandData, userID string) *types.InteractionRe
 				}
 			}
 		}
-		if date == "" || mealType == "" {
-			return types.ErrorResponse("Please provide all required options: date and meal_type.")
+		var errResp *types.InteractionResponse
+		date, errResp = validatedDate(date)
+		if errResp != nil {
+			return errResp
+		}
+		mealType, errResp = validatedMealType(mealType)
+		if errResp != nil {
+			return errResp
 		}
 		return handleMealTypeAdd(userID, date, mealType)
 	default:
