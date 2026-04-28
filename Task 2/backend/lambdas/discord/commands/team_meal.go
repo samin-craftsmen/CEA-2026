@@ -25,52 +25,25 @@ func HandleTeamMeal(data *types.CommandData, userID string) *types.InteractionRe
 	sub := data.Options[0]
 	switch sub.Name {
 	case "view":
-		date, err := stringOption(sub.Options, "date")
-		if err != nil {
-			return types.ErrorResponse(err.Error())
-		}
-		date, errResp := validatedDate(date)
+		date, errResp := validatedDateOption(sub.Options, "date")
 		if errResp != nil {
 			return errResp
 		}
 		return handleTeamMealView(userID, date)
 	case "set":
-		var targetUserID, date, mealType, status string
-		for _, opt := range sub.Options {
-			switch opt.Name {
-			case "employee":
-				// Discord USER option returns the user's snowflake ID as a string value.
-				if v, ok := opt.Value.(string); ok {
-					targetUserID = v
-				}
-			case "date":
-				if v, ok := opt.Value.(string); ok {
-					date = v
-				}
-			case "meal_type":
-				if v, ok := opt.Value.(string); ok {
-					mealType = v
-				}
-			case "status":
-				if v, ok := opt.Value.(string); ok {
-					status = v
-				}
-			}
-		}
-		var errResp *types.InteractionResponse
-		targetUserID, errResp = validatedTargetUserID(targetUserID)
+		targetUserID, errResp := validatedTargetUserIDOption(sub.Options, "employee")
 		if errResp != nil {
 			return errResp
 		}
-		date, errResp = validatedDate(date)
+		date, errResp := validatedDateOption(sub.Options, "date")
 		if errResp != nil {
 			return errResp
 		}
-		mealType, errResp = validatedMealType(mealType)
+		mealType, errResp := validatedMealTypeOption(sub.Options, "meal_type")
 		if errResp != nil {
 			return errResp
 		}
-		status, errResp = validatedStatus(status)
+		status, errResp := validatedStatusOption(sub.Options, "status")
 		if errResp != nil {
 			return errResp
 		}

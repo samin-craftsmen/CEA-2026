@@ -24,39 +24,21 @@ func HandleMeal(data *types.CommandData, userID string) *types.InteractionRespon
 	sub := data.Options[0]
 	switch sub.Name {
 	case "view":
-		date, err := stringOption(sub.Options, "date")
-		if err != nil {
-			return types.ErrorResponse(err.Error())
-		}
-		date, errResp := validatedDate(date)
+		date, errResp := validatedDateOption(sub.Options, "date")
 		if errResp != nil {
 			return errResp
 		}
 		return handleMealView(userID, date)
 	case "set":
-		var date, mealType, status string
-		for _, opt := range sub.Options {
-			if v, ok := opt.Value.(string); ok {
-				switch opt.Name {
-				case "date":
-					date = v
-				case "meal_type":
-					mealType = v
-				case "status":
-					status = v
-				}
-			}
-		}
-		var errResp *types.InteractionResponse
-		date, errResp = validatedDate(date)
+		date, errResp := validatedDateOption(sub.Options, "date")
 		if errResp != nil {
 			return errResp
 		}
-		mealType, errResp = validatedMealType(mealType)
+		mealType, errResp := validatedMealTypeOption(sub.Options, "meal_type")
 		if errResp != nil {
 			return errResp
 		}
-		status, errResp = validatedStatus(status)
+		status, errResp := validatedStatusOption(sub.Options, "status")
 		if errResp != nil {
 			return errResp
 		}

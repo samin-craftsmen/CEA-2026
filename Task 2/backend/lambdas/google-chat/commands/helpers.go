@@ -23,8 +23,20 @@ func sortedKeys(values map[string]string) []string {
 
 func normalizeUserRef(value string) string {
 	trimmed := strings.TrimSpace(value)
-	trimmed = strings.TrimPrefix(trimmed, "users/")
-	trimmed = strings.TrimPrefix(trimmed, "<users/")
-	trimmed = strings.TrimSuffix(trimmed, ">")
-	return strings.TrimSpace(trimmed)
+	switch {
+	case strings.HasPrefix(trimmed, "<") || strings.HasSuffix(trimmed, ">"):
+		if strings.HasPrefix(trimmed, "<users/") && strings.HasSuffix(trimmed, ">") {
+			trimmed = strings.TrimSuffix(strings.TrimPrefix(trimmed, "<users/"), ">")
+		} else {
+			return ""
+		}
+	case strings.HasPrefix(trimmed, "users/"):
+		trimmed = strings.TrimPrefix(trimmed, "users/")
+	}
+
+	trimmed = strings.TrimSpace(trimmed)
+	if trimmed == "" || strings.ContainsAny(trimmed, "<> \t\r\n") {
+		return ""
+	}
+	return trimmed
 }

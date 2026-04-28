@@ -44,11 +44,35 @@ func handleAppCommand(event *types.Event) *types.Response {
 	if !ok {
 		return types.ErrorResponse("unknown Google Chat command id; set GOOGLE_CHAT_COMMAND_IDS to map command ids to names")
 	}
-	args := strings.TrimSpace(event.MessageText())
+	args := appCommandArgs(event, commandName)
 	if args == "" {
 		return handleCommandText(commandName, event.GetUserID())
 	}
 	return handleCommandText(commandName+" "+args, event.GetUserID())
+}
+
+func appCommandArgs(event *types.Event, commandName string) string {
+	raw := strings.TrimSpace(event.MessageText())
+	if raw == "" {
+		return ""
+	}
+
+	trimmed := strings.TrimSpace(strings.TrimPrefix(raw, "/"))
+	commandPrefix := strings.TrimSpace(commandName)
+	if commandPrefix == "" {
+		return trimmed
+	}
+
+	lowerTrimmed := strings.ToLower(trimmed)
+	lowerCommand := strings.ToLower(commandPrefix)
+	if lowerTrimmed == lowerCommand {
+		return ""
+	}
+	if strings.HasPrefix(lowerTrimmed, lowerCommand+" ") {
+		return strings.TrimSpace(trimmed[len(commandPrefix):])
+	}
+
+	return trimmed
 }
 
 func handleCommandText(text, userID string) *types.Response {

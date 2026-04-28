@@ -23,35 +23,17 @@ func HandleWorkLocation(data *types.CommandData, userID string) *types.Interacti
 	sub := data.Options[0]
 	switch sub.Name {
 	case "view":
-		var date string
-		for _, opt := range sub.Options {
-			if v, ok := opt.Value.(string); ok && opt.Name == "date" {
-				date = v
-			}
-		}
-		date, errResp := validatedDate(date)
+		date, errResp := validatedDateOption(sub.Options, "date")
 		if errResp != nil {
 			return errResp
 		}
 		return handleWorkLocationView(userID, date)
 	case "set":
-		var date, location string
-		for _, opt := range sub.Options {
-			if v, ok := opt.Value.(string); ok {
-				switch opt.Name {
-				case "date":
-					date = v
-				case "location":
-					location = v
-				}
-			}
-		}
-		var errResp *types.InteractionResponse
-		date, errResp = validatedDate(date)
+		date, errResp := validatedDateOption(sub.Options, "date")
 		if errResp != nil {
 			return errResp
 		}
-		location, errResp = validatedLocation(location)
+		location, errResp := validatedLocationOption(sub.Options, "location")
 		if errResp != nil {
 			return errResp
 		}

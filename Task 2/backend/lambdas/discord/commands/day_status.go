@@ -23,41 +23,21 @@ func HandleDayStatus(data *types.CommandData, userID string) *types.InteractionR
 	sub := data.Options[0]
 	switch sub.Name {
 	case "set":
-		var date, statusType, note string
-		for _, opt := range sub.Options {
-			if v, ok := opt.Value.(string); ok {
-				switch opt.Name {
-				case "date":
-					date = v
-				case "type":
-					statusType = v
-				case "note":
-					note = v
-				}
-			}
-		}
-		var errResp *types.InteractionResponse
-		date, errResp = validatedDate(date)
+		date, errResp := validatedDateOption(sub.Options, "date")
 		if errResp != nil {
 			return errResp
 		}
-		statusType, errResp = validatedDayStatus(statusType)
+		statusType, errResp := validatedDayStatusOption(sub.Options, "type")
 		if errResp != nil {
 			return errResp
 		}
-		note, errResp = validatedNote(note, statusType == "SPECIAL_EVENT")
+		note, errResp := validatedNoteOption(sub.Options, "note", statusType == "SPECIAL_EVENT")
 		if errResp != nil {
 			return errResp
 		}
 		return handleDayStatusSet(userID, date, statusType, note)
 	case "view":
-		var date string
-		for _, opt := range sub.Options {
-			if v, ok := opt.Value.(string); ok && opt.Name == "date" {
-				date = v
-			}
-		}
-		date, errResp := validatedDate(date)
+		date, errResp := validatedDateOption(sub.Options, "date")
 		if errResp != nil {
 			return errResp
 		}

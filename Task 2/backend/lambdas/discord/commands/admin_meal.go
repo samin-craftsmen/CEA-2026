@@ -25,69 +25,35 @@ func HandleAdminMeal(data *types.CommandData, userID string) *types.InteractionR
 	sub := data.Options[0]
 	switch sub.Name {
 	case "view":
-		var targetUserID, date string
-		for _, opt := range sub.Options {
-			if v, ok := opt.Value.(string); ok {
-				switch opt.Name {
-				case "employee":
-					targetUserID = v
-				case "date":
-					date = v
-				}
-			}
-		}
-		var errResp *types.InteractionResponse
-		targetUserID, errResp = validatedTargetUserID(targetUserID)
+		targetUserID, errResp := validatedTargetUserIDOption(sub.Options, "employee")
 		if errResp != nil {
 			return errResp
 		}
-		date, errResp = validatedDate(date)
+		date, errResp := validatedDateOption(sub.Options, "date")
 		if errResp != nil {
 			return errResp
 		}
 		return handleAdminMealView(userID, targetUserID, date)
 	case "set":
-		var targetUserID, date, mealType, status string
-		for _, opt := range sub.Options {
-			if v, ok := opt.Value.(string); ok {
-				switch opt.Name {
-				case "employee":
-					targetUserID = v
-				case "date":
-					date = v
-				case "meal_type":
-					mealType = v
-				case "status":
-					status = v
-				}
-			}
-		}
-		var errResp *types.InteractionResponse
-		targetUserID, errResp = validatedTargetUserID(targetUserID)
+		targetUserID, errResp := validatedTargetUserIDOption(sub.Options, "employee")
 		if errResp != nil {
 			return errResp
 		}
-		date, errResp = validatedDate(date)
+		date, errResp := validatedDateOption(sub.Options, "date")
 		if errResp != nil {
 			return errResp
 		}
-		mealType, errResp = validatedMealType(mealType)
+		mealType, errResp := validatedMealTypeOption(sub.Options, "meal_type")
 		if errResp != nil {
 			return errResp
 		}
-		status, errResp = validatedStatus(status)
+		status, errResp := validatedStatusOption(sub.Options, "status")
 		if errResp != nil {
 			return errResp
 		}
 		return handleAdminMealSet(userID, targetUserID, date, mealType, status)
 	case "headcount":
-		var date string
-		for _, opt := range sub.Options {
-			if v, ok := opt.Value.(string); ok && opt.Name == "date" {
-				date = v
-			}
-		}
-		date, errResp := validatedDate(date)
+		date, errResp := validatedDateOption(sub.Options, "date")
 		if errResp != nil {
 			return errResp
 		}

@@ -33,6 +33,50 @@ func stringOption(options []types.CommandOption, name string) (string, error) {
 	return "", nil
 }
 
+func validatedOption(
+	options []types.CommandOption,
+	name string,
+	validator func(string) (string, *types.InteractionResponse),
+) (string, *types.InteractionResponse) {
+	value, err := stringOption(options, name)
+	if err != nil {
+		return "", types.ErrorResponse(err.Error())
+	}
+	return validator(value)
+}
+
+func validatedDateOption(options []types.CommandOption, name string) (string, *types.InteractionResponse) {
+	return validatedOption(options, name, validatedDate)
+}
+
+func validatedMealTypeOption(options []types.CommandOption, name string) (string, *types.InteractionResponse) {
+	return validatedOption(options, name, validatedMealType)
+}
+
+func validatedStatusOption(options []types.CommandOption, name string) (string, *types.InteractionResponse) {
+	return validatedOption(options, name, validatedStatus)
+}
+
+func validatedLocationOption(options []types.CommandOption, name string) (string, *types.InteractionResponse) {
+	return validatedOption(options, name, validatedLocation)
+}
+
+func validatedDayStatusOption(options []types.CommandOption, name string) (string, *types.InteractionResponse) {
+	return validatedOption(options, name, validatedDayStatus)
+}
+
+func validatedNoteOption(options []types.CommandOption, name string, required bool) (string, *types.InteractionResponse) {
+	value, err := stringOption(options, name)
+	if err != nil {
+		return "", types.ErrorResponse(err.Error())
+	}
+	return validatedNote(value, required)
+}
+
+func validatedTargetUserIDOption(options []types.CommandOption, name string) (string, *types.InteractionResponse) {
+	return validatedOption(options, name, validatedTargetUserID)
+}
+
 func validatedDate(value string) (string, *types.InteractionResponse) {
 	validated, err := validation.Date(value)
 	if err != nil {
