@@ -15,11 +15,17 @@ var httpClient = &http.Client{Timeout: 10 * time.Second}
 // APIBaseURL is the base URL for all feature Lambda APIs.
 // Set from the API_BASE_URL environment variable.
 var APIBaseURL string
+var internalAPIKey string
 
 func Init() {
 	APIBaseURL = os.Getenv("API_BASE_URL")
 	if APIBaseURL == "" {
 		panic("API_BASE_URL environment variable is required")
+	}
+
+	internalAPIKey = os.Getenv("INTERNAL_API_KEY")
+	if internalAPIKey == "" {
+		internalAPIKey = "api-key-test"
 	}
 }
 
@@ -32,7 +38,14 @@ func Post(path string, requestBody any, target any) error {
 	}
 
 	url := APIBaseURL + path
-	resp, err := httpClient.Post(url, "application/json", bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("failed to create request for %s: %w", path, err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", internalAPIKey)
+
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("request to %s failed: %w", path, err)
 	}

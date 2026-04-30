@@ -5,6 +5,8 @@ This backend is deployed as a serverless API using:
 - AWS Lambda (Go custom runtime)
 - AWS DynamoDB
 
+Internal feature routes called by the Discord and Google Chat lambdas can be protected with a Lambda authorizer that validates the `x-api-key` header. The included authorizer defaults to `api-key-test` and can be overridden with the `CUSTOM_API_KEY` environment variable.
+
 ---
 
 ## Prerequisites
@@ -26,6 +28,15 @@ go build -o bootstrap
 powershell Compress-Archive -Path bootstrap -DestinationPath function.zip -Force
 
 ```
+
+For the Discord and Google Chat lambdas, set these environment variables:
+
+- `API_BASE_URL`: base URL of the feature API Gateway.
+- `INTERNAL_API_KEY`: API key sent to the Lambda authorizer. Defaults to `api-key-test` if omitted.
+
+For the Lambda authorizer, set:
+
+- `CUSTOM_API_KEY`: expected API key. Defaults to `api-key-test` if omitted.
 
 ## Test
 
